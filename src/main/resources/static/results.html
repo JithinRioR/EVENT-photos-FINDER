@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Your Event Photos</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>📸 Your Event Photos</h1>
+
+    <p id="message">
+        Searching for your photos...
+    </p>
+
+    <div id="results"></div>
+
+    <br>
+
+    <a href="/" class="back-button">
+        ← Search Again
+    </a>
+
+</div>
+
+<script>
+
+const results = document.getElementById("results");
+const message = document.getElementById("message");
+
+// Temporary message
+message.textContent =
+    "Photo matching will appear here once event photos are available.";
+
+</script>
+
+</body>
+
+</html>

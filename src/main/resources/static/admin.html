@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Admin - Event Photo Finder</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f7fb;
+            margin: 0;
+            padding: 30px;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: auto;
+            background: white;
+            padding: 35px;
+            border-radius: 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        label {
+            display: block;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 14px;
+            margin-top: 8px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            font-size: 16px;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            margin-top: 25px;
+            border: none;
+            border-radius: 10px;
+            background: #222;
+            color: white;
+            font-size: 17px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #444;
+        }
+
+        .event-card {
+            margin-top: 20px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            background: #fafafa;
+        }
+
+        .event-card h3 {
+            margin-top: 0;
+        }
+
+        .event-card p {
+            color: #555;
+            word-break: break-all;
+        }
+
+        .event-card a {
+            color: blue;
+        }
+
+        .success {
+            color: green;
+            text-align: center;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+
+        .error {
+            color: red;
+            text-align: center;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<div class="container">
+
+
+    <h1>⚙️ Admin Panel</h1>
+
+
+    <p class="subtitle">
+        Add an event and connect its Google Drive photos.
+    </p>
+
+
+    <!-- EVENT NAME -->
+
+    <label for="eventName">
+        Event Name
+    </label>
+
+    <input
+        type="text"
+        id="eventName"
+        placeholder="Example: College Cultural Event"
+    >
+
+
+    <!-- EVENT DATE -->
+
+    <label for="eventDate">
+        Event Date
+    </label>
+
+    <input
+        type="date"
+        id="eventDate"
+    >
+
+
+    <!-- GOOGLE DRIVE LINK -->
+
+    <label for="driveLink">
+        Google Drive Photo Link
+    </label>
+
+    <input
+        type="url"
+        id="driveLink"
+        placeholder="Paste Google Drive folder link"
+    >
+
+
+    <!-- ADD EVENT -->
+
+    <button onclick="addEvent()">
+        ➕ Add Event
+    </button>
+
+
+    <!-- MESSAGE -->
+
+    <div id="message"></div>
+
+
+    <!-- EVENTS -->
+
+    <h2 style="margin-top: 40px;">
+        📋 Events
+    </h2>
+
+
+    <div id="eventList"></div>
+
+
+</div>
+
+
+<script>
+
+
+// ==========================================
+// ADD EVENT
+// ==========================================
+
+async function addEvent() {
+
+
+    const eventName =
+        document.getElementById("eventName").value.trim();
+
+
+    const eventDate =
+        document.getElementById("eventDate").value;
+
+
+    const driveLink =
+        document.getElementById("driveLink").value.trim();
+
+
+    // VALIDATION
+
+    if (eventName === "") {
+
+        alert("Please enter event name.");
+
+        return;
+
+    }
+
+
+    if (eventDate === "") {
+
+        alert("Please select event date.");
+
+        return;
+
+    }
+
+
+    if (driveLink === "") {
+
+        alert("Please enter Google Drive link.");
+
+        return;
+
+    }
+
+
+    // EVENT DATA
+
+    const eventData = {
+
+        eventName: eventName,
+
+        eventDate: eventDate,
+
+        driveLink: driveLink
+
+    };
+
+
+    try {
+
+
+        // SEND TO SPRING BOOT
+
+        const response =
+            await fetch(
+                "/api/events",
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify(eventData)
+                }
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Failed to save event"
+            );
+
+        }
+
+
+        // GET SAVED EVENT
+
+        const savedEvent =
+            await response.json();
+
+
+        // CREATE EVENT CARD
+
+        createEventCard(savedEvent);
+
+
+        // SUCCESS MESSAGE
+
+        document.getElementById("message").innerHTML =
+            '<p class="success">✅ Event saved successfully!</p>';
+
+
+        // CLEAR FORM
+
+        document.getElementById("eventName").value = "";
+
+        document.getElementById("eventDate").value = "";
+
+        document.getElementById("driveLink").value = "";
+
+
+    }
+
+
+    catch (error) {
+
+
+        console.error(error);
+
+
+        document.getElementById("message").innerHTML =
+            '<p class="error">❌ Failed to save event.</p>';
+
+    }
+
+}
+
+
+// ==========================================
+// CREATE EVENT CARD
+// ==========================================
+
+function createEventCard(event) {
+
+
+    const eventCard =
+        document.createElement("div");
+
+
+    eventCard.className =
+        "event-card";
+
+
+    eventCard.innerHTML = `
+
+        <h3>
+            📸 ${event.eventName}
+        </h3>
+
+        <p>
+            📅 Date: ${event.eventDate}
+        </p>
+
+        <p>
+            🔗 Drive:
+            <a
+                href="${event.driveLink}"
+                target="_blank">
+                Open Google Drive
+            </a>
+        </p>
+
+    `;
+
+
+    document
+        .getElementById("eventList")
+        .appendChild(eventCard);
+
+}
+
+
+// ==========================================
+// LOAD EXISTING EVENTS
+// ==========================================
+
+async function loadEvents() {
+
+
+    try {
+
+
+        const response =
+            await fetch("/api/events");
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Failed to load events"
+            );
+
+        }
+
+
+        const events =
+            await response.json();
+
+
+        const eventList =
+            document.getElementById("eventList");
+
+
+        eventList.innerHTML = "";
+
+
+        events.forEach(function(event) {
+
+            createEventCard(event);
+
+        });
+
+
+    }
+
+
+    catch (error) {
+
+
+        console.error(error);
+
+
+        document.getElementById("message").innerHTML =
+            '<p class="error">❌ Could not load events.</p>';
+
+    }
+
+}
+
+
+// ==========================================
+// LOAD EVENTS WHEN PAGE OPENS
+// ==========================================
+
+window.onload = function() {
+
+    loadEvents();
+
+};
+
+
+</script>
+
+
+</body>
+
+</html>

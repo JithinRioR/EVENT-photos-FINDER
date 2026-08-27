@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Photo Finder</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            text-align: center;
+        }
+
+        input {
+            margin: 20px;
+        }
+
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        #status {
+            margin: 20px;
+        }
+
+        .photo {
+            margin: 15px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>📸 Event Photo Finder</h1>
+
+    <p>Upload your selfie to find your event photos.</p>
+
+    <input
+        type="file"
+        id="selfie"
+        accept="image/*"
+    >
+
+    <br>
+
+    <button onclick="findPhotos()">
+        🔍 Find My Photos
+    </button>
+
+    <div id="status"></div>
+
+    <div id="results"></div>
+
+    <script>
+
+        async function findPhotos() {
+
+            const fileInput =
+                document.getElementById("selfie");
+
+            const status =
+                document.getElementById("status");
+
+            const results =
+                document.getElementById("results");
+
+            if (!fileInput.files.length) {
+                status.innerText =
+                    "Please select a selfie first.";
+                return;
+            }
+
+            const formData = new FormData();
+
+            formData.append(
+                "selfie",
+                fileInput.files[0]
+            );
+
+            status.innerText =
+                "🔍 Searching your event photos...";
+
+            results.innerHTML = "";
+
+            try {
+
+                const response =
+                    await fetch("/api/photos/find", {
+                        method: "POST",
+                        body: formData
+                    });
+
+                if (!response.ok) {
+
+                    const error =
+                        await response.text();
+
+                    throw new Error(error);
+                }
+
+                const photos =
+                    await response.json();
+
+                if (photos.length === 0) {
+
+                    status.innerText =
+                        "😔 No matching photos found.";
+
+                    return;
+                }
+
+                status.innerText =
+                    `✅ Found ${photos.length} matching photo(s)!`;
+
+                photos.forEach(photo => {
+
+                    const div =
+                        document.createElement("div");
+
+                    div.className = "photo";
+
+                    div.innerHTML = `
+                        <h3>${photo.name}</h3>
+                        <a href="${photo.webViewLink}"
+                           target="_blank">
+                            📷 Open Photo
+                        </a>
+                    `;
+
+                    results.appendChild(div);
+                });
+
+            } catch (error) {
+
+                console.error(error);
+
+                status.innerText =
+                    "❌ Error: " + error.message;
+            }
+        }
+
+    </script>
+
+</body>
+</html>
