@@ -4,151 +4,1110 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Event Photo Finder</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            font-family: Arial, sans-serif;
-            max-width: 900px;
-            margin: 50px auto;
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        /* ========== TOP NAVBAR ========== */
+        .navbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+            height: 60px;
+            background: rgba(0,0,0,0.35);
+            backdrop-filter: blur(15px);
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .navbar .logo {
+            font-size: 20px;
+            font-weight: 700;
+            background: linear-gradient(to right, #a78bfa, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 5px;
+        }
+
+        .nav-tab {
+            padding: 10px 22px;
+            border: none;
+            background: transparent;
+            color: rgba(255,255,255,0.5);
+            font-family: 'Poppins', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .nav-tab:hover {
+            color: rgba(255,255,255,0.8);
+            background: rgba(255,255,255,0.06);
+        }
+
+        .nav-tab.active {
+            color: #fff;
+            background: rgba(167, 139, 250, 0.2);
+            border: 1px solid rgba(167, 139, 250, 0.3);
+        }
+
+        /* ========== LAYOUT ========== */
+        .app-layout {
+            display: flex;
+            min-height: calc(100vh - 60px);
+        }
+
+        /* ========== SIDEBAR ========== */
+        .sidebar {
+            width: 270px;
+            background: rgba(255, 255, 255, 0.04);
+            border-right: 1px solid rgba(255, 255, 255, 0.08);
             padding: 20px;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        .sidebar h3 {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #a78bfa;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .sidebar .file-count {
+            font-size: 12px;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 12px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 12px;
+            margin-bottom: 4px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.02);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 12px;
+            word-break: break-all;
+            text-decoration: none;
+            color: rgba(255,255,255,0.7);
+        }
+
+        .file-item:hover {
+            background: rgba(167,139,250,0.12);
+            color: #fff;
+        }
+
+        .file-item .icon { font-size: 18px; flex-shrink: 0; }
+
+        .sidebar-placeholder {
             text-align: center;
+            padding: 30px 10px;
+            color: rgba(255,255,255,0.3);
+            font-size: 12px;
+            line-height: 1.6;
         }
 
-        input {
-            margin: 20px;
+        /* ========== MAIN CONTENT ========== */
+        .main-content {
+            flex: 1;
+            padding: 35px 40px;
+            overflow-y: auto;
         }
 
-        button {
-            padding: 12px 25px;
+        .page { display: none; }
+        .page.active { display: block; }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 35px;
+        }
+
+        .page-header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            background: linear-gradient(to right, #a78bfa, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 6px;
+        }
+
+        .page-header p {
+            color: rgba(255,255,255,0.5);
+            font-size: 14px;
+        }
+
+        /* ========== SHARED CARD STYLE ========== */
+        .card {
+            background: rgba(255,255,255,0.06);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 28px;
+            margin-bottom: 22px;
+            max-width: 620px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .card.wide { max-width: 900px; }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #a78bfa;
+            margin-bottom: 18px;
+        }
+
+        /* ========== FORM ELEMENTS ========== */
+        .form-group { margin-bottom: 16px; }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 7px;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 11px 15px;
+            border-radius: 10px;
+            border: 2px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.07);
+            color: #fff;
+            font-family: 'Poppins', sans-serif;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .form-input:focus, .form-select:focus { border-color: #a78bfa; }
+        .form-input::placeholder { color: rgba(255,255,255,0.25); }
+
+        .form-select {
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+
+        .form-select option { background: #302b63; color: #fff; }
+
+        .select-wrapper { position: relative; }
+
+        .select-wrapper::after {
+            content: '▼';
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #a78bfa;
+            font-size: 11px;
+            pointer-events: none;
+        }
+
+        .form-input[type="file"] { padding: 9px; cursor: pointer; }
+
+        .form-input[type="file"]::-webkit-file-upload-button {
+            background: linear-gradient(135deg, #a78bfa, #ec4899);
+            color: white;
             border: none;
             border-radius: 8px;
+            padding: 7px 14px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 12px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+
+        /* ========== BUTTONS ========== */
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #a78bfa, #ec4899);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(167,139,250,0.25);
+        }
+
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(167,139,250,0.35); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: #fff;
+        }
+
+        .btn-success:hover { transform: translateY(-2px); }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+
+        .btn-secondary:hover { background: rgba(255,255,255,0.15); }
+
+        .btn-danger {
+            background: rgba(239,68,68,0.15);
+            color: #ef4444;
+            border: 1px solid rgba(239,68,68,0.25);
+            padding: 7px 14px;
+            font-size: 12px;
+        }
+
+        .btn-danger:hover { background: rgba(239,68,68,0.3); }
+
+        .btn-sm { padding: 7px 14px; font-size: 12px; }
+
+        /* ========== TABS (Upload/Camera) ========== */
+        .input-tabs { display: flex; gap: 8px; margin-bottom: 18px; }
+
+        .tab-btn {
+            flex: 1;
+            padding: 11px;
+            border: 2px solid rgba(255,255,255,0.12);
+            border-radius: 10px;
+            background: transparent;
+            color: rgba(255,255,255,0.5);
+            font-family: 'Poppins', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active { border-color: #a78bfa; color: #fff; background: rgba(167,139,250,0.12); }
+        .tab-btn:hover { border-color: #a78bfa; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Upload area */
+        .upload-area {
+            border: 2px dashed rgba(255,255,255,0.15);
+            border-radius: 12px;
+            padding: 35px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-area:hover { border-color: #a78bfa; background: rgba(167,139,250,0.04); }
+        .upload-area .icon { font-size: 44px; margin-bottom: 8px; }
+        .upload-area p { color: rgba(255,255,255,0.4); font-size: 13px; }
+        .upload-area .filename { color: #a78bfa; font-weight: 500; margin-top: 6px; }
+
+        #fileInput { display: none; }
+
+        /* Camera */
+        .camera-area { text-align: center; }
+
+        #videoFeed {
+            width: 100%;
+            max-width: 380px;
+            border-radius: 12px;
+            border: 2px solid rgba(255,255,255,0.12);
+            display: none;
+        }
+
+        #capturedPhoto {
+            width: 100%;
+            max-width: 380px;
+            border-radius: 12px;
+            border: 2px solid #a78bfa;
+            display: none;
+            margin-top: 10px;
+        }
+
+        .camera-controls { margin-top: 12px; display: flex; gap: 8px; justify-content: center; }
+
+        #cameraCanvas { display: none; }
+
+        .preview-container { margin-top: 12px; text-align: center; }
+        .preview-container img { max-width: 180px; max-height: 180px; border-radius: 12px; border: 2px solid #a78bfa; }
+
+        .search-btn-container { text-align: center; margin-top: 18px; }
+
+        /* ========== STATUS ========== */
+        .status-msg {
+            margin-top: 14px;
+            padding: 11px 15px;
+            border-radius: 10px;
+            font-size: 13px;
+            display: none;
+        }
+
+        .status-msg.show { display: block; }
+        .status-msg.success { background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.25); color: #10b981; }
+        .status-msg.error { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: #ef4444; }
+        .status-msg.info { background: rgba(167,139,250,0.12); border: 1px solid rgba(167,139,250,0.25); color: #a78bfa; }
+
+        #finderStatus { text-align: center; margin: 18px 0; font-size: 14px; }
+
+        .spinner {
+            display: inline-block;
+            width: 18px; height: 18px;
+            border: 3px solid rgba(255,255,255,0.25);
+            border-radius: 50%;
+            border-top-color: #a78bfa;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ========== RESULTS GRID ========== */
+        #results { max-width: 700px; margin: 0 auto; }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+            gap: 14px;
+        }
+
+        .photo-card {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .photo-card:hover { border-color: #a78bfa; transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
+        .photo-card .card-icon { font-size: 44px; margin-bottom: 8px; }
+        .photo-card .card-name { font-size: 12px; color: rgba(255,255,255,0.6); margin-bottom: 10px; word-break: break-all; }
+        .photo-card .card-buttons { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+
+        .photo-card a {
+            display: inline-block;
+            padding: 7px 14px;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .photo-card a.open-btn { background: linear-gradient(135deg, #a78bfa, #ec4899); }
+        .photo-card a.download-btn { background: linear-gradient(135deg, #10b981, #059669); }
+        .photo-card a:hover { transform: scale(1.05); }
+
+        /* ========== ADMIN ========== */
+        .login-box {
+            text-align: center;
+            max-width: 400px;
+            margin: 60px auto;
+        }
+
+        .login-box .lock-icon { font-size: 64px; margin-bottom: 15px; }
+        .login-box p { color: rgba(255,255,255,0.5); font-size: 14px; margin-bottom: 20px; }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-items: stretch;
+            text-align: left;
+        }
+
+        .login-form .form-group {
+            margin-bottom: 0;
+        }
+
+        .login-form button {
+            margin-top: 8px;
+            justify-content: center;
+        }
+
+        .events-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 14px;
+            margin-top: 14px;
+        }
+
+        .event-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 18px;
+            transition: all 0.3s;
             cursor: pointer;
         }
 
-        #status {
-            margin: 20px;
+        .event-card:hover { border-color: #a78bfa; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.25); }
+        .event-card.selected { border-color: #a78bfa; background: rgba(167,139,250,0.1); }
+        .event-card .ev-name { font-size: 15px; font-weight: 600; }
+        .event-card .ev-id { font-size: 10px; color: rgba(255,255,255,0.3); word-break: break-all; margin-top: 4px; }
+
+        .photo-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            margin-bottom: 6px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.06);
+            transition: all 0.2s;
         }
 
-        .photo {
-            margin: 15px;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 10px;
+        .photo-item:hover { background: rgba(255,255,255,0.08); }
+
+        .photo-item .p-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .photo-item .p-name { font-size: 12px; color: rgba(255,255,255,0.75); word-break: break-all; }
+        .photo-item .p-icon { font-size: 18px; flex-shrink: 0; }
+        .photo-item .p-actions { display: flex; gap: 6px; flex-shrink: 0; margin-left: 10px; }
+
+        .empty-state {
+            text-align: center;
+            padding: 35px;
+            color: rgba(255,255,255,0.35);
+            font-size: 13px;
+        }
+
+        .row-flex { display: flex; gap: 12px; align-items: flex-end; }
+        .row-flex .form-group { flex: 1; margin-bottom: 0; }
+
+        /* ========== RESPONSIVE ========== */
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .navbar { padding: 0 15px; }
+            .main-content { padding: 20px; }
+            .page-header h1 { font-size: 24px; }
+            .results-grid { grid-template-columns: 1fr; }
+            .login-form { flex-direction: column; }
+            .row-flex { flex-direction: column; align-items: stretch; }
         }
     </style>
 </head>
 
 <body>
 
-    <h1>📸 Event Photo Finder</h1>
+<!-- ========== NAVBAR ========== -->
+<nav class="navbar">
+    <div class="logo">📸 Event Photo Finder</div>
+    <div class="nav-tabs">
+        <button class="nav-tab active" onclick="switchPage('finder')">
+            🔍 Find Photos
+        </button>
+        <button class="nav-tab" onclick="switchPage('admin')">
+            ⚙️ Admin Panel
+        </button>
+    </div>
+</nav>
 
-    <p>Upload your selfie to find your event photos.</p>
+<div class="app-layout">
 
-    <input
-        type="file"
-        id="selfie"
-        accept="image/*"
-    >
+    <!-- ========== SIDEBAR ========== -->
+    <div class="sidebar">
+        <h3>📁 Event Files</h3>
+        <div id="sidebarFiles">
+            <div class="sidebar-placeholder">Choose an event to see files here.</div>
+        </div>
+    </div>
 
-    <br>
+    <!-- ========== MAIN CONTENT ========== -->
+    <div class="main-content">
 
-    <button onclick="findPhotos()">
-        🔍 Find My Photos
-    </button>
+        <!-- ==================== FINDER PAGE ==================== -->
+        <div class="page active" id="finderPage">
 
-    <div id="status"></div>
+            <div class="page-header">
+                <h1>🔍 Find Your Photos</h1>
+                <p>Select an event, upload your selfie or take one, and we'll find you.</p>
+            </div>
 
-    <div id="results"></div>
+            <!-- Event Selector -->
+            <div class="card">
+                <div class="card-title">🎉 Choose Your Event</div>
+                <div class="select-wrapper">
+                    <select class="form-select" id="folderSelect" onchange="onFolderSelected()">
+                        <option value="">-- Loading events... --</option>
+                    </select>
+                </div>
+            </div>
 
-    <script>
+            <!-- Photo Input -->
+            <div class="card">
+                <div class="input-tabs">
+                    <button class="tab-btn active" onclick="switchTab('upload')">📁 Upload Photo</button>
+                    <button class="tab-btn" onclick="switchTab('camera')">📷 Use Camera</button>
+                </div>
 
-        async function findPhotos() {
+                <!-- Upload Tab -->
+                <div id="uploadTab" class="tab-content active">
+                    <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                        <div class="icon">📤</div>
+                        <p>Click to choose a photo</p>
+                        <div class="filename" id="fileName"></div>
+                    </div>
+                    <input type="file" id="fileInput" accept="image/*" onchange="onFileSelected(event)">
+                    <div class="preview-container" id="uploadPreview"></div>
+                </div>
 
-            const fileInput =
-                document.getElementById("selfie");
+                <!-- Camera Tab -->
+                <div id="cameraTab" class="tab-content">
+                    <div class="camera-area">
+                        <video id="videoFeed" autoplay playsinline></video>
+                        <canvas id="cameraCanvas"></canvas>
+                        <img id="capturedPhoto" alt="Captured">
+                        <div class="camera-controls">
+                            <button class="btn btn-secondary" id="startCamBtn" onclick="startCamera()">🎥 Start Camera</button>
+                            <button class="btn btn-primary" id="captureBtn" onclick="capturePhoto()" style="display:none;">📸 Capture</button>
+                            <button class="btn btn-danger" id="retakeBtn" onclick="retakePhoto()" style="display:none;">🔄 Retake</button>
+                        </div>
+                    </div>
+                </div>
 
-            const status =
-                document.getElementById("status");
+                <div class="search-btn-container">
+                    <button class="btn btn-primary" id="searchBtn" onclick="findPhotos()">🔍 Find My Photos</button>
+                </div>
+            </div>
 
-            const results =
-                document.getElementById("results");
+            <div id="finderStatus"></div>
+            <div id="results"></div>
+        </div>
 
-            if (!fileInput.files.length) {
-                status.innerText =
-                    "Please select a selfie first.";
-                return;
-            }
+        <!-- ==================== ADMIN PAGE ==================== -->
+        <div class="page" id="adminPage">
 
-            const formData = new FormData();
+            <!-- Login Gate -->
+            <div id="adminLoginGate">
+                <div class="login-box">
+                    <div class="lock-icon">🔒</div>
+                    <h2 style="margin-bottom: 8px;">Admin Access</h2>
+                    <p>Enter the admin username and password to manage events and photos.</p>
+                    <div class="login-form">
+                        <div class="form-group">
+                            <label for="adminUsername">Username</label>
+                            <input type="text" class="form-input" id="adminUsername" placeholder="Enter username">
+                        </div>
+                        <div class="form-group">
+                            <label for="adminPassword">Password</label>
+                            <input type="password" class="form-input" id="adminPassword"
+                                   placeholder="Enter password" onkeydown="if(event.key==='Enter') adminLogin()">
+                        </div>
+                        <button class="btn btn-primary" onclick="adminLogin()">🔓 Login</button>
+                    </div>
+                    <div class="status-msg" id="loginStatus"></div>
+                </div>
+            </div>
 
-            formData.append(
-                "selfie",
-                fileInput.files[0]
-            );
+            <!-- Admin Content (hidden until login) -->
+            <div id="adminContent" style="display: none;">
 
-            status.innerText =
-                "🔍 Searching your event photos...";
+                <div class="page-header">
+                    <h1>⚙️ Admin Panel</h1>
+                    <p>Manage events, upload photos, and organize your Google Drive.</p>
+                </div>
 
-            results.innerHTML = "";
+                <!-- Create Event -->
+                <div class="card">
+                    <div class="card-title">➕ Create New Event</div>
+                    <div class="row-flex">
+                        <div class="form-group">
+                            <label>Event Folder Name</label>
+                            <input type="text" class="form-input" id="newFolderName"
+                                   placeholder="e.g. Birthday Party 2026">
+                        </div>
+                        <button class="btn btn-primary" id="createFolderBtn" onclick="createFolder()">🗂️ Create</button>
+                    </div>
+                    <div class="status-msg" id="createStatus"></div>
+                </div>
 
-            try {
+                <!-- Event List -->
+                <div class="card wide">
+                    <div class="card-title">📂 Your Events</div>
+                    <p style="font-size: 12px; color: rgba(255,255,255,0.4); margin-bottom: 12px;">
+                        Click an event to manage its photos.
+                    </p>
+                    <div id="eventsContainer">
+                        <div class="empty-state"><span class="spinner"></span> Loading events...</div>
+                    </div>
+                </div>
 
-                const response =
-                    await fetch("/api/photos/find", {
-                        method: "POST",
-                        body: formData
-                    });
+                <!-- Upload Photos -->
+                <div class="card wide" id="uploadSection" style="display: none;">
+                    <div class="card-title">📤 Upload Photos to: <span id="selectedEventName" style="color:#ec4899;"></span></div>
+                    <div class="form-group">
+                        <label>Select Photos (multiple allowed)</label>
+                        <input type="file" class="form-input" id="photoFiles" multiple accept="image/*">
+                    </div>
+                    <button class="btn btn-success" id="uploadBtn" onclick="uploadPhotos()">⬆️ Upload Photos</button>
+                    <div class="status-msg" id="uploadStatus"></div>
+                </div>
 
-                if (!response.ok) {
+                <!-- Photos in Event -->
+                <div class="card wide" id="photosSection" style="display: none;">
+                    <div class="card-title">🖼️ Photos in: <span id="photosEventName" style="color:#ec4899;"></span></div>
+                    <div id="photosList">
+                        <div class="empty-state">Select an event to view photos.</div>
+                    </div>
+                </div>
 
-                    const error =
-                        await response.text();
+            </div>
+        </div>
 
-                    throw new Error(error);
-                }
+    </div>
+</div>
 
-                const photos =
-                    await response.json();
+<script>
 
-                if (photos.length === 0) {
+    let capturedBlob = null;
+    let cameraStream = null;
+    let selectedFolderId = '';
+    let adminSelectedFolderId = '';
+    let adminSelectedFolderName = '';
+    let isAdminLoggedIn = false;
 
-                    status.innerText =
-                        "😔 No matching photos found.";
+    // ==================== PAGE SWITCHING ====================
+    function switchPage(page) {
+        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
 
-                    return;
-                }
+        if (page === 'finder') {
+            document.querySelectorAll('.nav-tab')[0].classList.add('active');
+            document.getElementById('finderPage').classList.add('active');
+        } else {
+            document.querySelectorAll('.nav-tab')[1].classList.add('active');
+            document.getElementById('adminPage').classList.add('active');
+            if (isAdminLoggedIn) loadAdminEvents();
+        }
+    }
 
-                status.innerText =
-                    `✅ Found ${photos.length} matching photo(s)!`;
+    // ==================== ADMIN LOGIN ====================
+    async function adminLogin() {
+        const username = document.getElementById('adminUsername').value.trim();
+        const password = document.getElementById('adminPassword').value;
+        const status = document.getElementById('loginStatus');
 
-                photos.forEach(photo => {
-
-                    const div =
-                        document.createElement("div");
-
-                    div.className = "photo";
-
-                    div.innerHTML = `
-                        <h3>${photo.name}</h3>
-                        <a href="${photo.webViewLink}"
-                           target="_blank">
-                            📷 Open Photo
-                        </a>
-                    `;
-
-                    results.appendChild(div);
-                });
-
-            } catch (error) {
-
-                console.error(error);
-
-                status.innerText =
-                    "❌ Error: " + error.message;
-            }
+        if (!username || !password) {
+            showStatus(status, 'error', '⚠️ Please enter both username and password.');
+            return;
         }
 
-    </script>
+        try {
+            const formData = new FormData();
+            formData.append('username', username);
+            formData.append('password', password);
 
+            const response = await fetch('/api/photos/admin/login', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                isAdminLoggedIn = true;
+                document.getElementById('adminLoginGate').style.display = 'none';
+                document.getElementById('adminContent').style.display = 'block';
+                loadAdminEvents();
+            } else {
+                showStatus(status, 'error', '❌ ' + result.message);
+            }
+
+        } catch (err) {
+            showStatus(status, 'error', '❌ Login failed: ' + err.message);
+        }
+    }
+
+    // ==================== LOAD FOLDERS (FINDER) ====================
+    async function loadFolders() {
+        const select = document.getElementById('folderSelect');
+        try {
+            const response = await fetch('/api/photos/folders');
+            const folders = await response.json();
+            select.innerHTML = '<option value="">-- Select an Event --</option>';
+            if (folders.length === 0) {
+                select.innerHTML = '<option value="">-- No events found --</option>';
+                return;
+            }
+            folders.forEach(f => {
+                const opt = document.createElement('option');
+                opt.value = f.id;
+                opt.textContent = '📂 ' + f.name;
+                select.appendChild(opt);
+            });
+        } catch (err) {
+            select.innerHTML = '<option value="">-- Error loading events --</option>';
+        }
+    }
+
+    function onFolderSelected() {
+        selectedFolderId = document.getElementById('folderSelect').value;
+        document.getElementById('finderStatus').innerHTML = '';
+        document.getElementById('results').innerHTML = '';
+        if (selectedFolderId) {
+            loadSidebarFiles(selectedFolderId);
+        } else {
+            document.getElementById('sidebarFiles').innerHTML =
+                '<div class="sidebar-placeholder">Choose an event to see files here.</div>';
+        }
+    }
+
+    // ==================== TAB SWITCHING ====================
+    function switchTab(tab) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        if (tab === 'upload') {
+            document.getElementById('uploadTab').classList.add('active');
+            document.querySelectorAll('.tab-btn')[0].classList.add('active');
+            stopCamera();
+        } else {
+            document.getElementById('cameraTab').classList.add('active');
+            document.querySelectorAll('.tab-btn')[1].classList.add('active');
+        }
+    }
+
+    // ==================== FILE UPLOAD ====================
+    function onFileSelected(event) {
+        const file = event.target.files[0];
+        if (file) {
+            document.getElementById('fileName').innerText = file.name;
+            capturedBlob = null;
+            const preview = document.getElementById('uploadPreview');
+            const reader = new FileReader();
+            reader.onload = e => { preview.innerHTML = '<img src="' + e.target.result + '" alt="Preview">'; };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    // ==================== CAMERA ====================
+    async function startCamera() {
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'user', width: 640, height: 480 }
+            });
+            const video = document.getElementById('videoFeed');
+            video.srcObject = cameraStream;
+            video.style.display = 'block';
+            document.getElementById('startCamBtn').style.display = 'none';
+            document.getElementById('captureBtn').style.display = 'inline-flex';
+            document.getElementById('capturedPhoto').style.display = 'none';
+            document.getElementById('retakeBtn').style.display = 'none';
+        } catch (err) {
+            alert('Could not access camera.');
+        }
+    }
+
+    function capturePhoto() {
+        const video = document.getElementById('videoFeed');
+        const canvas = document.getElementById('cameraCanvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        canvas.toBlob(blob => {
+            capturedBlob = blob;
+            const captured = document.getElementById('capturedPhoto');
+            captured.src = URL.createObjectURL(blob);
+            captured.style.display = 'block';
+            video.style.display = 'none';
+            document.getElementById('captureBtn').style.display = 'none';
+            document.getElementById('retakeBtn').style.display = 'inline-flex';
+            stopCamera();
+        }, 'image/jpeg', 0.9);
+    }
+
+    function retakePhoto() {
+        capturedBlob = null;
+        document.getElementById('capturedPhoto').style.display = 'none';
+        document.getElementById('retakeBtn').style.display = 'none';
+        startCamera();
+    }
+
+    function stopCamera() {
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(t => t.stop());
+            cameraStream = null;
+        }
+        document.getElementById('videoFeed').style.display = 'none';
+    }
+
+    // ==================== FIND PHOTOS ====================
+    async function findPhotos() {
+        const fileInput = document.getElementById('fileInput');
+        const status = document.getElementById('finderStatus');
+        const results = document.getElementById('results');
+        const searchBtn = document.getElementById('searchBtn');
+
+        if (!selectedFolderId) { status.innerHTML = '⚠️ Please select an event folder first.'; return; }
+
+        const formData = new FormData();
+        if (capturedBlob) {
+            formData.append('selfie', capturedBlob, 'camera_selfie.jpg');
+        } else if (fileInput.files.length) {
+            formData.append('selfie', fileInput.files[0]);
+        } else {
+            status.innerHTML = '⚠️ Please upload a photo or capture one.';
+            return;
+        }
+
+        formData.append('folderId', selectedFolderId);
+        status.innerHTML = '<span class="spinner"></span> Searching your event photos...';
+        results.innerHTML = '';
+        searchBtn.disabled = true;
+
+        try {
+            const response = await fetch('/api/photos/find', { method: 'POST', body: formData });
+            if (!response.ok) throw new Error(await response.text());
+            const photos = await response.json();
+
+            if (photos.length === 0) { status.innerHTML = '😔 No matching photos found.'; return; }
+            status.innerHTML = '✅ Found ' + photos.length + ' matching photo(s)!';
+
+            let grid = '<div class="results-grid">';
+            photos.forEach(photo => {
+                const dl = '/api/photos/download/' + photo.id + '?name=' + encodeURIComponent(photo.name);
+                grid += `
+                    <div class="photo-card">
+                        <div class="card-icon">🖼️</div>
+                        <div class="card-name">${photo.name}</div>
+                        <div class="card-buttons">
+                            <a href="${photo.webViewLink}" target="_blank" class="open-btn">📷 Open</a>
+                            <a href="${dl}" class="download-btn" download>⬇️ Download</a>
+                        </div>
+                    </div>`;
+            });
+            grid += '</div>';
+            results.innerHTML = grid;
+        } catch (error) {
+            status.innerHTML = '❌ Error: ' + error.message;
+        } finally {
+            searchBtn.disabled = false;
+        }
+    }
+
+    // ==================== SIDEBAR FILES ====================
+    async function loadSidebarFiles(folderId) {
+        const container = document.getElementById('sidebarFiles');
+        container.innerHTML = '<div class="sidebar-placeholder"><span class="spinner"></span> Loading...</div>';
+        try {
+            const response = await fetch('/api/photos/list?folderId=' + encodeURIComponent(folderId));
+            const files = await response.json();
+            if (files.length === 0) {
+                container.innerHTML = '<div class="sidebar-placeholder">No files in this event.</div>';
+                return;
+            }
+            let html = '<div class="file-count">' + files.length + ' file(s)</div>';
+            files.forEach(f => {
+                const icon = (f.mimeType && f.mimeType.startsWith('image/')) ? '🖼️' : '📄';
+                html += `<a href="${f.webViewLink || '#'}" target="_blank" class="file-item">
+                    <span class="icon">${icon}</span><span>${f.name}</span></a>`;
+            });
+            container.innerHTML = html;
+        } catch (err) {
+            container.innerHTML = '<div class="sidebar-placeholder">Error loading files.</div>';
+        }
+    }
+
+    // ==================== ADMIN: LOAD EVENTS ====================
+    async function loadAdminEvents() {
+        const container = document.getElementById('eventsContainer');
+        container.innerHTML = '<div class="empty-state"><span class="spinner"></span> Loading events...</div>';
+        try {
+            const response = await fetch('/api/photos/folders');
+            const folders = await response.json();
+            if (folders.length === 0) {
+                container.innerHTML = '<div class="empty-state">No events yet. Create one above!</div>';
+                return;
+            }
+            let html = '<div class="events-grid">';
+            folders.forEach(f => {
+                const safeName = f.name.replace(/'/g, "\\'");
+                html += `<div class="event-card" id="ecard-${f.id}"
+                    onclick="selectAdminEvent('${f.id}', '${safeName}')">
+                    <div class="ev-name">📂 ${f.name}</div>
+                    <div class="ev-id">ID: ${f.id}</div></div>`;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        } catch (err) {
+            container.innerHTML = '<div class="empty-state">❌ Error loading events.</div>';
+        }
+    }
+
+    // ==================== ADMIN: SELECT EVENT ====================
+    function selectAdminEvent(folderId, folderName) {
+        adminSelectedFolderId = folderId;
+        adminSelectedFolderName = folderName;
+        document.querySelectorAll('.event-card').forEach(c => c.classList.remove('selected'));
+        const card = document.getElementById('ecard-' + folderId);
+        if (card) card.classList.add('selected');
+        document.getElementById('uploadSection').style.display = 'block';
+        document.getElementById('selectedEventName').textContent = folderName;
+        document.getElementById('photosSection').style.display = 'block';
+        document.getElementById('photosEventName').textContent = folderName;
+        loadAdminPhotos(folderId);
+    }
+
+    // ==================== ADMIN: CREATE FOLDER ====================
+    async function createFolder() {
+        const nameInput = document.getElementById('newFolderName');
+        const status = document.getElementById('createStatus');
+        const btn = document.getElementById('createFolderBtn');
+        const name = nameInput.value.trim();
+
+        if (!name) { showStatus(status, 'error', '⚠️ Enter an event name.'); return; }
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Creating...';
+
+        try {
+            const fd = new FormData();
+            fd.append('name', name);
+            const response = await fetch('/api/photos/admin/create-folder', { method: 'POST', body: fd });
+            const result = await response.json();
+            if (result.status === 'success') {
+                showStatus(status, 'success', '✅ Event "' + result.name + '" created!');
+                nameInput.value = '';
+                loadAdminEvents();
+                loadFolders(); // Refresh finder dropdown too
+            } else { throw new Error(result.message); }
+        } catch (err) {
+            showStatus(status, 'error', '❌ Error: ' + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '🗂️ Create';
+        }
+    }
+
+    // ==================== ADMIN: UPLOAD PHOTOS ====================
+    async function uploadPhotos() {
+        const fileInput = document.getElementById('photoFiles');
+        const status = document.getElementById('uploadStatus');
+        const btn = document.getElementById('uploadBtn');
+
+        if (!adminSelectedFolderId) { showStatus(status, 'error', '⚠️ Select an event first.'); return; }
+        if (fileInput.files.length === 0) { showStatus(status, 'error', '⚠️ Select at least one photo.'); return; }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Uploading ' + fileInput.files.length + ' file(s)...';
+
+        try {
+            const fd = new FormData();
+            fd.append('folderId', adminSelectedFolderId);
+            for (let i = 0; i < fileInput.files.length; i++) fd.append('files', fileInput.files[i]);
+
+            const response = await fetch('/api/photos/admin/upload', { method: 'POST', body: fd });
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                showStatus(status, 'success', '✅ Uploaded ' + result.uploaded + ' photo(s)!');
+                fileInput.value = '';
+                loadAdminPhotos(adminSelectedFolderId);
+            } else { throw new Error(result.message); }
+        } catch (err) {
+            showStatus(status, 'error', '❌ Upload error: ' + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '⬆️ Upload Photos';
+        }
+    }
+
+    // ==================== ADMIN: LOAD PHOTOS ====================
+    async function loadAdminPhotos(folderId) {
+        const container = document.getElementById('photosList');
+        container.innerHTML = '<div class="empty-state"><span class="spinner"></span> Loading photos...</div>';
+        try {
+            const response = await fetch('/api/photos/list?folderId=' + encodeURIComponent(folderId));
+            const files = await response.json();
+            if (files.length === 0) {
+                container.innerHTML = '<div class="empty-state">No photos yet. Upload some above!</div>';
+                return;
+            }
+            let html = '';
+            files.forEach(f => {
+                const icon = (f.mimeType && f.mimeType.startsWith('image/')) ? '🖼️' : '📄';
+                const safeName = f.name.replace(/'/g, "\\'");
+                html += `<div class="photo-item" id="pi-${f.id}">
+                    <div class="p-info"><span class="p-icon">${icon}</span><span class="p-name">${f.name}</span></div>
+                    <div class="p-actions">
+                        <a href="${f.webViewLink || '#'}" target="_blank" class="btn btn-primary btn-sm">👁️ View</a>
+                        <button class="btn btn-danger" onclick="deletePhoto('${f.id}', '${safeName}')">🗑️ Delete</button>
+                    </div></div>`;
+            });
+            html += '<div style="text-align:center;margin-top:12px;color:rgba(255,255,255,0.35);font-size:12px;">'
+                   + files.length + ' file(s)</div>';
+            container.innerHTML = html;
+        } catch (err) {
+            container.innerHTML = '<div class="empty-state">❌ Error loading photos.</div>';
+        }
+    }
+
+    // ==================== ADMIN: DELETE PHOTO ====================
+    async function deletePhoto(fileId, fileName) {
+        if (!confirm('Delete "' + fileName + '"?\nThis cannot be undone!')) return;
+        const el = document.getElementById('pi-' + fileId);
+        if (el) el.style.opacity = '0.4';
+        try {
+            const response = await fetch('/api/photos/admin/delete/' + fileId, { method: 'DELETE' });
+            const result = await response.json();
+            if (result.status === 'success') {
+                if (el) { el.style.transition = 'all 0.3s'; el.style.transform = 'translateX(50px)'; el.style.opacity = '0';
+                    setTimeout(() => el.remove(), 300); }
+            } else { throw new Error(result.message); }
+        } catch (err) {
+            alert('Error: ' + err.message);
+            if (el) el.style.opacity = '1';
+        }
+    }
+
+    // ==================== HELPERS ====================
+    function showStatus(el, type, msg) {
+        el.className = 'status-msg show ' + type;
+        el.textContent = msg;
+    }
+
+    // Init
+    window.addEventListener('load', loadFolders);
+
+</script>
 </body>
 </html>

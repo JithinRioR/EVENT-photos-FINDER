@@ -29,7 +29,7 @@ public class PhotoMatchingService {
     }
 
     public List<File> findMatchingPhotos(
-            MultipartFile selfie) throws Exception {
+            MultipartFile selfie, String folderId) throws Exception {
 
         List<File> matches = new ArrayList<>();
 
@@ -67,9 +67,9 @@ public class PhotoMatchingService {
                         selfieFace
                 );
 
-        // Get Google Drive files
+        // Get Google Drive files from chosen folder
         List<File> driveFiles =
-                googleDriveService.getDriveFiles();
+                googleDriveService.getDriveFiles(folderId);
 
         for (File file : driveFiles) {
 

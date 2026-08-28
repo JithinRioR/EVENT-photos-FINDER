@@ -1,6 +1,6 @@
 package com.event.event;
 
-import org.opencv.core.Core;
+import nu.pattern.OpenCV;
 import org.opencv.core.Mat;
 import org.opencv.core.Size;
 import org.opencv.objdetect.FaceDetectorYN;
@@ -21,12 +21,11 @@ public class FaceDetector {
 
         try {
 
-            // Load OpenCV native library
-            System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+            // Load OpenCV native library automatically
+            OpenCV.loadLocally();
 
             System.out.println(
-                    "OpenCV loaded successfully: "
-                            + Core.VERSION
+                    "OpenCV loaded successfully!"
             );
 
             // Load YuNet model from resources
@@ -35,7 +34,6 @@ public class FaceDetector {
                             "models/face_detection_yunet_2023mar.onnx"
                     );
 
-            // Create temporary file for the ONNX model
             File modelFile = File.createTempFile(
                     "face_detection_yunet_2023mar",
                     ".onnx"
@@ -43,7 +41,8 @@ public class FaceDetector {
 
             modelFile.deleteOnExit();
 
-            try (InputStream inputStream = resource.getInputStream()) {
+            try (InputStream inputStream =
+                         resource.getInputStream()) {
 
                 Files.copy(
                         inputStream,
@@ -57,7 +56,6 @@ public class FaceDetector {
                             + modelFile.getAbsolutePath()
             );
 
-            // Create YuNet detector
             detector = FaceDetectorYN.create(
                     modelFile.getAbsolutePath(),
                     "",

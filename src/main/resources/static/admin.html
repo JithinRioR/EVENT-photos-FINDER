@@ -1,448 +1,692 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
-    <title>Admin - Event Photo Finder</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Event Photo Finder</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
-
         * {
+            margin: 0;
+            padding: 0;
             box-sizing: border-box;
         }
 
         body {
-            font-family: Arial, sans-serif;
-            background: #f5f7fb;
-            margin: 0;
-            padding: 30px;
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            min-height: 100vh;
+            color: #fff;
+            padding: 40px 20px;
         }
 
         .container {
-            max-width: 700px;
+            max-width: 900px;
             margin: auto;
-            background: white;
-            padding: 35px;
-            border-radius: 20px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
         }
 
-        h1 {
+        .header {
             text-align: center;
-            margin-bottom: 10px;
+            margin-bottom: 40px;
         }
 
-        .subtitle {
-            text-align: center;
-            color: #666;
-            margin-bottom: 30px;
+        .header h1 {
+            font-size: 36px;
+            font-weight: 700;
+            background: linear-gradient(to right, #a78bfa, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
         }
 
-        label {
+        .header p {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 15px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 10px;
+            color: rgba(255,255,255,0.5);
+            font-size: 13px;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .back-link:hover {
+            color: #a78bfa;
+        }
+
+        /* --- SECTIONS --- */
+        .section {
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 25px;
+        }
+
+        .section h2 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #a78bfa;
+        }
+
+        /* --- FORM ELEMENTS --- */
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
             display: block;
-            margin-top: 20px;
-            font-weight: bold;
+            font-size: 13px;
+            font-weight: 500;
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 8px;
         }
 
-        input {
+        .form-input {
             width: 100%;
-            padding: 14px;
-            margin-top: 8px;
-            border: 1px solid #ccc;
+            padding: 12px 16px;
             border-radius: 10px;
-            font-size: 16px;
+            border: 2px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.08);
+            color: #fff;
+            font-family: 'Poppins', sans-serif;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
         }
 
-        button {
-            width: 100%;
-            padding: 15px;
-            margin-top: 25px;
-            border: none;
-            border-radius: 10px;
-            background: #222;
-            color: white;
-            font-size: 17px;
+        .form-input:focus {
+            border-color: #a78bfa;
+        }
+
+        .form-input::placeholder {
+            color: rgba(255,255,255,0.3);
+        }
+
+        .form-input[type="file"] {
+            padding: 10px;
             cursor: pointer;
         }
 
-        button:hover {
-            background: #444;
+        .form-input[type="file"]::-webkit-file-upload-button {
+            background: linear-gradient(135deg, #a78bfa, #ec4899);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 13px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+
+        /* --- SELECT --- */
+        .select-wrapper {
+            position: relative;
+        }
+
+        .select-wrapper::after {
+            content: '▼';
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #a78bfa;
+            font-size: 12px;
+            pointer-events: none;
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 2px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.08);
+            color: #fff;
+            font-family: 'Poppins', sans-serif;
+            font-size: 14px;
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .form-select:hover,
+        .form-select:focus {
+            border-color: #a78bfa;
+        }
+
+        .form-select option {
+            background: #302b63;
+            color: #fff;
+        }
+
+        /* --- BUTTONS --- */
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #a78bfa, #ec4899);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(167, 139, 250, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(167, 139, 250, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: #fff;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 6px 14px;
+            font-size: 12px;
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.35);
+        }
+
+        /* --- STATUS MESSAGE --- */
+        .status-msg {
+            margin-top: 15px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .status-msg.success {
+            display: block;
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #10b981;
+        }
+
+        .status-msg.error {
+            display: block;
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+
+        /* --- SPINNER --- */
+        .spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #a78bfa;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* --- EVENT CARDS --- */
+        .events-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 16px;
+            margin-top: 15px;
         }
 
         .event-card {
-            margin-top: 20px;
-            padding: 20px;
-            border: 1px solid #ddd;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 12px;
-            background: #fafafa;
+            padding: 20px;
+            transition: all 0.3s;
+            cursor: pointer;
         }
 
-        .event-card h3 {
-            margin-top: 0;
+        .event-card:hover {
+            border-color: #a78bfa;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
         }
 
-        .event-card p {
-            color: #555;
+        .event-card.selected {
+            border-color: #a78bfa;
+            background: rgba(167, 139, 250, 0.1);
+        }
+
+        .event-card .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .event-card .card-id {
+            font-size: 11px;
+            color: rgba(255,255,255,0.35);
             word-break: break-all;
         }
 
-        .event-card a {
-            color: blue;
+        /* --- PHOTO LIST --- */
+        .photo-list {
+            margin-top: 15px;
         }
 
-        .success {
-            color: green;
+        .photo-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.2s;
+        }
+
+        .photo-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .photo-item .photo-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .photo-item .photo-name {
+            font-size: 13px;
+            color: rgba(255,255,255,0.8);
+            word-break: break-all;
+        }
+
+        .photo-item .photo-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .photo-item .photo-actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+            margin-left: 10px;
+        }
+
+        .empty-state {
             text-align: center;
-            margin-top: 20px;
-            font-weight: bold;
+            padding: 40px;
+            color: rgba(255,255,255,0.4);
+            font-size: 14px;
         }
 
-        .error {
-            color: red;
-            text-align: center;
-            margin-top: 20px;
-            font-weight: bold;
+        .row-flex {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
         }
 
+        .row-flex .form-group {
+            flex: 1;
+            margin-bottom: 0;
+        }
     </style>
-
 </head>
-
 
 <body>
 
-
 <div class="container">
 
+    <div class="header">
+        <h1>⚙️ Admin Panel</h1>
+        <p>Manage your events, upload photos, and organize your Google Drive.</p>
+        <a href="/index.html" class="back-link">← Back to Photo Finder</a>
+    </div>
 
-    <h1>⚙️ Admin Panel</h1>
+    <!-- CREATE NEW EVENT -->
+    <div class="section">
+        <h2>➕ Create New Event</h2>
+        <div class="row-flex">
+            <div class="form-group">
+                <label>Event Folder Name</label>
+                <input type="text" class="form-input" id="newFolderName"
+                       placeholder="e.g. Birthday Party 2026">
+            </div>
+            <button class="btn btn-primary" id="createFolderBtn" onclick="createFolder()">
+                🗂️ Create Event
+            </button>
+        </div>
+        <div class="status-msg" id="createStatus"></div>
+    </div>
 
+    <!-- SELECT EVENT & VIEW PHOTOS -->
+    <div class="section">
+        <h2>📂 Your Events</h2>
+        <p style="font-size: 13px; color: rgba(255,255,255,0.5); margin-bottom: 15px;">
+            Click an event to manage its photos.
+        </p>
+        <div id="eventsContainer">
+            <div class="empty-state"><span class="spinner"></span> Loading events...</div>
+        </div>
+    </div>
 
-    <p class="subtitle">
-        Add an event and connect its Google Drive photos.
-    </p>
+    <!-- UPLOAD PHOTOS (hidden until event selected) -->
+    <div class="section" id="uploadSection" style="display: none;">
+        <h2>📤 Upload Photos to: <span id="selectedEventName" style="color:#ec4899;"></span></h2>
+        <div class="form-group">
+            <label>Select Photos (you can select multiple)</label>
+            <input type="file" class="form-input" id="photoFiles" multiple accept="image/*">
+        </div>
+        <button class="btn btn-success" id="uploadBtn" onclick="uploadPhotos()">
+            ⬆️ Upload Photos
+        </button>
+        <div class="status-msg" id="uploadStatus"></div>
+    </div>
 
-
-    <!-- EVENT NAME -->
-
-    <label for="eventName">
-        Event Name
-    </label>
-
-    <input
-        type="text"
-        id="eventName"
-        placeholder="Example: College Cultural Event"
-    >
-
-
-    <!-- EVENT DATE -->
-
-    <label for="eventDate">
-        Event Date
-    </label>
-
-    <input
-        type="date"
-        id="eventDate"
-    >
-
-
-    <!-- GOOGLE DRIVE LINK -->
-
-    <label for="driveLink">
-        Google Drive Photo Link
-    </label>
-
-    <input
-        type="url"
-        id="driveLink"
-        placeholder="Paste Google Drive folder link"
-    >
-
-
-    <!-- ADD EVENT -->
-
-    <button onclick="addEvent()">
-        ➕ Add Event
-    </button>
-
-
-    <!-- MESSAGE -->
-
-    <div id="message"></div>
-
-
-    <!-- EVENTS -->
-
-    <h2 style="margin-top: 40px;">
-        📋 Events
-    </h2>
-
-
-    <div id="eventList"></div>
-
+    <!-- PHOTOS IN EVENT (hidden until event selected) -->
+    <div class="section" id="photosSection" style="display: none;">
+        <h2>🖼️ Photos in: <span id="photosEventName" style="color:#ec4899;"></span></h2>
+        <div id="photosList">
+            <div class="empty-state">Select an event to view photos.</div>
+        </div>
+    </div>
 
 </div>
 
-
 <script>
 
+    let selectedFolderId = '';
+    let selectedFolderName = '';
 
-// ==========================================
-// ADD EVENT
-// ==========================================
+    // ============ LOAD EVENTS ============
+    async function loadEvents() {
+        const container = document.getElementById('eventsContainer');
 
-async function addEvent() {
+        try {
+            const response = await fetch('/api/photos/folders');
+            const folders = await response.json();
 
+            if (folders.length === 0) {
+                container.innerHTML = '<div class="empty-state">No events found. Create one above!</div>';
+                return;
+            }
 
-    const eventName =
-        document.getElementById("eventName").value.trim();
+            let html = '<div class="events-grid">';
 
+            folders.forEach(folder => {
+                html += `
+                    <div class="event-card" id="card-${folder.id}"
+                         onclick="selectEvent('${folder.id}', '${folder.name.replace(/'/g, "\\'")}')">
+                        <div class="card-title">📂 ${folder.name}</div>
+                        <div class="card-id">ID: ${folder.id}</div>
+                    </div>
+                `;
+            });
 
-    const eventDate =
-        document.getElementById("eventDate").value;
+            html += '</div>';
+            container.innerHTML = html;
 
-
-    const driveLink =
-        document.getElementById("driveLink").value.trim();
-
-
-    // VALIDATION
-
-    if (eventName === "") {
-
-        alert("Please enter event name.");
-
-        return;
-
+        } catch (err) {
+            container.innerHTML = '<div class="empty-state">❌ Error loading events.</div>';
+            console.error(err);
+        }
     }
 
+    // ============ SELECT EVENT ============
+    function selectEvent(folderId, folderName) {
+        selectedFolderId = folderId;
+        selectedFolderName = folderName;
 
-    if (eventDate === "") {
+        // Highlight selected card
+        document.querySelectorAll('.event-card').forEach(c => c.classList.remove('selected'));
+        const card = document.getElementById('card-' + folderId);
+        if (card) card.classList.add('selected');
 
-        alert("Please select event date.");
+        // Show upload section
+        document.getElementById('uploadSection').style.display = 'block';
+        document.getElementById('selectedEventName').textContent = folderName;
 
-        return;
+        // Show photos section
+        document.getElementById('photosSection').style.display = 'block';
+        document.getElementById('photosEventName').textContent = folderName;
 
+        // Load photos
+        loadPhotos(folderId);
     }
 
+    // ============ CREATE FOLDER ============
+    async function createFolder() {
+        const nameInput = document.getElementById('newFolderName');
+        const status = document.getElementById('createStatus');
+        const btn = document.getElementById('createFolderBtn');
+        const name = nameInput.value.trim();
 
-    if (driveLink === "") {
+        if (!name) {
+            status.className = 'status-msg error';
+            status.textContent = '⚠️ Please enter an event name.';
+            return;
+        }
 
-        alert("Please enter Google Drive link.");
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Creating...';
 
-        return;
+        try {
+            const formData = new FormData();
+            formData.append('name', name);
 
+            const response = await fetch('/api/photos/admin/create-folder', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                status.className = 'status-msg success';
+                status.textContent = '✅ Event "' + result.name + '" created successfully!';
+                nameInput.value = '';
+                loadEvents(); // Refresh the list
+            } else {
+                throw new Error(result.message);
+            }
+
+        } catch (err) {
+            status.className = 'status-msg error';
+            status.textContent = '❌ Error: ' + err.message;
+            console.error(err);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '🗂️ Create Event';
+        }
     }
 
+    // ============ UPLOAD PHOTOS ============
+    async function uploadPhotos() {
+        const fileInput = document.getElementById('photoFiles');
+        const status = document.getElementById('uploadStatus');
+        const btn = document.getElementById('uploadBtn');
 
-    // EVENT DATA
+        if (!selectedFolderId) {
+            status.className = 'status-msg error';
+            status.textContent = '⚠️ Please select an event first.';
+            return;
+        }
 
-    const eventData = {
+        if (fileInput.files.length === 0) {
+            status.className = 'status-msg error';
+            status.textContent = '⚠️ Please select at least one photo.';
+            return;
+        }
 
-        eventName: eventName,
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Uploading ' + fileInput.files.length + ' file(s)...';
 
-        eventDate: eventDate,
+        try {
+            const formData = new FormData();
+            formData.append('folderId', selectedFolderId);
 
-        driveLink: driveLink
+            for (let i = 0; i < fileInput.files.length; i++) {
+                formData.append('files', fileInput.files[i]);
+            }
 
-    };
+            const response = await fetch('/api/photos/admin/upload', {
+                method: 'POST',
+                body: formData
+            });
 
+            const result = await response.json();
 
-    try {
+            if (result.status === 'success') {
+                status.className = 'status-msg success';
+                status.textContent = '✅ Successfully uploaded ' + result.uploaded + ' photo(s)!';
+                fileInput.value = '';
+                loadPhotos(selectedFolderId); // Refresh photos
+            } else {
+                throw new Error(result.message);
+            }
 
+        } catch (err) {
+            status.className = 'status-msg error';
+            status.textContent = '❌ Upload error: ' + err.message;
+            console.error(err);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '⬆️ Upload Photos';
+        }
+    }
 
-        // SEND TO SPRING BOOT
+    // ============ LOAD PHOTOS ============
+    async function loadPhotos(folderId) {
+        const container = document.getElementById('photosList');
+        container.innerHTML = '<div class="empty-state"><span class="spinner"></span> Loading photos...</div>';
 
-        const response =
-            await fetch(
-                "/api/events",
-                {
-                    method: "POST",
+        try {
+            const response = await fetch('/api/photos/list?folderId=' + encodeURIComponent(folderId));
+            const files = await response.json();
 
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
+            if (files.length === 0) {
+                container.innerHTML = '<div class="empty-state">No photos in this event yet. Upload some above!</div>';
+                return;
+            }
 
-                    body: JSON.stringify(eventData)
+            let html = '<div class="photo-list">';
+
+            files.forEach(file => {
+                const isImage = file.mimeType && file.mimeType.startsWith('image/');
+                const icon = isImage ? '🖼️' : '📄';
+                const viewLink = file.webViewLink || '#';
+
+                html += `
+                    <div class="photo-item" id="photo-${file.id}">
+                        <div class="photo-info">
+                            <span class="photo-icon">${icon}</span>
+                            <span class="photo-name">${file.name}</span>
+                        </div>
+                        <div class="photo-actions">
+                            <a href="${viewLink}" target="_blank"
+                               class="btn btn-primary" style="padding:6px 14px; font-size:12px;">
+                                👁️ View
+                            </a>
+                            <button class="btn btn-danger"
+                                    onclick="deletePhoto('${file.id}', '${file.name.replace(/'/g, "\\'")}')">
+                                🗑️ Delete
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            html += '<div style="text-align:center; margin-top:15px; color:rgba(255,255,255,0.4); font-size:13px;">'
+                   + files.length + ' file(s) total</div>';
+
+            container.innerHTML = html;
+
+        } catch (err) {
+            container.innerHTML = '<div class="empty-state">❌ Error loading photos.</div>';
+            console.error(err);
+        }
+    }
+
+    // ============ DELETE PHOTO ============
+    async function deletePhoto(fileId, fileName) {
+        if (!confirm('Are you sure you want to delete "' + fileName + '"?\nThis cannot be undone!')) {
+            return;
+        }
+
+        const photoElement = document.getElementById('photo-' + fileId);
+        if (photoElement) {
+            photoElement.style.opacity = '0.5';
+        }
+
+        try {
+            const response = await fetch('/api/photos/admin/delete/' + fileId, {
+                method: 'DELETE'
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                if (photoElement) {
+                    photoElement.style.transition = 'all 0.3s';
+                    photoElement.style.transform = 'translateX(50px)';
+                    photoElement.style.opacity = '0';
+                    setTimeout(() => {
+                        photoElement.remove();
+                    }, 300);
                 }
-            );
+            } else {
+                throw new Error(result.message);
+            }
 
-
-        if (!response.ok) {
-
-            throw new Error(
-                "Failed to save event"
-            );
-
+        } catch (err) {
+            alert('Error deleting file: ' + err.message);
+            if (photoElement) {
+                photoElement.style.opacity = '1';
+            }
+            console.error(err);
         }
-
-
-        // GET SAVED EVENT
-
-        const savedEvent =
-            await response.json();
-
-
-        // CREATE EVENT CARD
-
-        createEventCard(savedEvent);
-
-
-        // SUCCESS MESSAGE
-
-        document.getElementById("message").innerHTML =
-            '<p class="success">✅ Event saved successfully!</p>';
-
-
-        // CLEAR FORM
-
-        document.getElementById("eventName").value = "";
-
-        document.getElementById("eventDate").value = "";
-
-        document.getElementById("driveLink").value = "";
-
-
     }
 
-
-    catch (error) {
-
-
-        console.error(error);
-
-
-        document.getElementById("message").innerHTML =
-            '<p class="error">❌ Failed to save event.</p>';
-
-    }
-
-}
-
-
-// ==========================================
-// CREATE EVENT CARD
-// ==========================================
-
-function createEventCard(event) {
-
-
-    const eventCard =
-        document.createElement("div");
-
-
-    eventCard.className =
-        "event-card";
-
-
-    eventCard.innerHTML = `
-
-        <h3>
-            📸 ${event.eventName}
-        </h3>
-
-        <p>
-            📅 Date: ${event.eventDate}
-        </p>
-
-        <p>
-            🔗 Drive:
-            <a
-                href="${event.driveLink}"
-                target="_blank">
-                Open Google Drive
-            </a>
-        </p>
-
-    `;
-
-
-    document
-        .getElementById("eventList")
-        .appendChild(eventCard);
-
-}
-
-
-// ==========================================
-// LOAD EXISTING EVENTS
-// ==========================================
-
-async function loadEvents() {
-
-
-    try {
-
-
-        const response =
-            await fetch("/api/events");
-
-
-        if (!response.ok) {
-
-            throw new Error(
-                "Failed to load events"
-            );
-
-        }
-
-
-        const events =
-            await response.json();
-
-
-        const eventList =
-            document.getElementById("eventList");
-
-
-        eventList.innerHTML = "";
-
-
-        events.forEach(function(event) {
-
-            createEventCard(event);
-
-        });
-
-
-    }
-
-
-    catch (error) {
-
-
-        console.error(error);
-
-
-        document.getElementById("message").innerHTML =
-            '<p class="error">❌ Could not load events.</p>';
-
-    }
-
-}
-
-
-// ==========================================
-// LOAD EVENTS WHEN PAGE OPENS
-// ==========================================
-
-window.onload = function() {
-
-    loadEvents();
-
-};
-
+    // Load events on page load
+    window.addEventListener('load', loadEvents);
 
 </script>
 
-
 </body>
-
 </html>

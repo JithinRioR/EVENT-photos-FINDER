@@ -2,9 +2,14 @@ package com.event.event;
 
 import org.opencv.core.Mat;
 import org.opencv.objdetect.FaceRecognizerSF;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
+import java.io.File;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 
 @Service
 public class FaceRecognitionService {
@@ -14,17 +19,47 @@ public class FaceRecognitionService {
     @PostConstruct
     public void loadModels() {
 
-        nu.pattern.OpenCV.loadLocally();
+        try {
+            nu.pattern.OpenCV.loadLocally();
 
-        String modelPath =
-                "src/main/resources/models/face_recognition_sface_2021dec.onnx";
+            ClassPathResource resource =
+                    new ClassPathResource(
+                            "models/face_recognition_sface_2021dec.onnx"
+                    );
 
-        faceRecognizer = FaceRecognizerSF.create(
-                modelPath,
-                ""
-        );
+            File modelFile = File.createTempFile(
+                    "face_recognition_sface_2021dec",
+                    ".onnx"
+            );
 
-        System.out.println("SFace face recognition model loaded successfully!");
+            modelFile.deleteOnExit();
+
+            try (InputStream inputStream = resource.getInputStream()) {
+                Files.copy(
+                        inputStream,
+                        modelFile.toPath(),
+                        StandardCopyOption.REPLACE_EXISTING
+                );
+            }
+
+            System.out.println(
+                    "SFace model path: "
+                            + modelFile.getAbsolutePath()
+            );
+
+            faceRecognizer = FaceRecognizerSF.create(
+                    modelFile.getAbsolutePath(),
+                    ""
+            );
+
+            System.out.println("SFace face recognition model loaded successfully!");
+
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    "Failed to initialize SFace model",
+                    e
+            );
+        }
     }
 
     // Create SFace feature from detected face
@@ -45,7 +80,7 @@ public class FaceRecognitionService {
                 feature
         );
 
-        return feature;
+        return feature.clone();
     }
 
     // Compare two SFace features
