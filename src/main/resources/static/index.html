@@ -686,7 +686,11 @@
 
                 <!-- Photos in Event -->
                 <div class="card wide" id="photosSection" style="display: none;">
-                    <div class="card-title">🖼️ Photos in: <span id="photosEventName" style="color:#ec4899;"></span></div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <div class="card-title" style="margin-bottom:0;">🖼️ Photos in: <span id="photosEventName" style="color:#ec4899;"></span></div>
+                        <button class="btn btn-primary" id="syncBtn" onclick="syncPhotos()" style="padding: 8px 16px; font-size: 13px;">🔄 Sync Photos from Drive</button>
+                    </div>
+                    <div class="status-msg" id="syncStatus" style="margin-bottom:15px; display:none;"></div>
                     <div id="photosList">
                         <div class="empty-state">Select an event to view photos.</div>
                     </div>
@@ -696,8 +700,6 @@
         </div>
 
     </div>
-</div>
-
 <script>
 
     let capturedBlob = null;
@@ -1096,6 +1098,47 @@
         } catch (err) {
             alert('Error: ' + err.message);
             if (el) el.style.opacity = '1';
+        }
+    }
+
+    // ==================== ADMIN: SYNC PHOTOS ====================
+    async function syncPhotos() {
+        const status = document.getElementById('syncStatus');
+        const btn = document.getElementById('syncBtn');
+
+        if (!adminSelectedFolderId) {
+            alert('Please select an event first.');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Syncing...';
+        status.style.display = 'block';
+        showStatus(status, 'info', '🔄 Downloading new photos, detecting faces, and caching. Please wait...');
+
+        try {
+            const fd = new FormData();
+            fd.append('folderId', adminSelectedFolderId);
+
+            const response = await fetch('/api/photos/admin/sync', {
+                method: 'POST',
+                body: fd
+            });
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                showStatus(status, 'success', 
+                    `✅ Sync complete! Total images: ${result.totalImages}, newly indexed: ${result.newlySynced}, already synced: ${result.alreadySynced}, failed: ${result.failed}.`
+                );
+                loadAdminPhotos(adminSelectedFolderId);
+            } else {
+                throw new Error(result.message);
+            }
+        } catch (err) {
+            showStatus(status, 'error', '❌ Sync failed: ' + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '🔄 Sync Photos from Drive';
         }
     }
 

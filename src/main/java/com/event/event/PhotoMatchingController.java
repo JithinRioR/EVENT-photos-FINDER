@@ -118,6 +118,24 @@ public class PhotoMatchingController {
 
     // ============ ADMIN ENDPOINTS ============
 
+    // Sync files and extract faces into local DB cache
+    @PostMapping("/admin/sync")
+    public ResponseEntity<Map<String, Object>> syncEventPhotos(
+            @RequestParam("folderId") String folderId) {
+
+        try {
+            Map<String, Object> syncResult = photoMatchingService.syncPhotos(folderId);
+            syncResult.put("status", "success");
+            return ResponseEntity.ok(syncResult);
+        } catch (Exception e) {
+            System.err.println("Sync error: " + e.getMessage());
+            Map<String, Object> error = new HashMap<>();
+            error.put("status", "error");
+            error.put("message", e.getMessage());
+            return ResponseEntity.internalServerError().body(error);
+        }
+    }
+
     // Create a new event folder
     @PostMapping("/admin/create-folder")
     public ResponseEntity<Map<String, String>> createEventFolder(
