@@ -83,6 +83,7 @@ public class PhotoMatchingService {
         // Convert selfie to OpenCV Mat
         MatOfByte selfieBytes = new MatOfByte(selfie.getBytes());
         Mat selfieImage = Imgcodecs.imdecode(selfieBytes, Imgcodecs.IMREAD_COLOR);
+        selfieBytes.release(); // Free immediately
 
         if (selfieImage.empty()) {
             throw new RuntimeException("Could not read selfie!");
@@ -96,6 +97,7 @@ public class PhotoMatchingService {
 
         if (selfieFaces.empty() || selfieFaces.rows() == 0) {
             selfieImage.release();
+            selfieFaces.release();
             throw new RuntimeException("No face detected in selfie!");
         }
 
@@ -138,6 +140,8 @@ public class PhotoMatchingService {
         }
 
         selfieImage.release();
+        selfieFaces.release();
+        selfieFeature.release();
         return matches;
     }
 
@@ -171,11 +175,16 @@ public class PhotoMatchingService {
             }
 
             Mat image = null;
+            MatOfByte bytes = null;
+            Mat faces = null;
             try {
                 // Download file bytes
                 byte[] imageBytes = googleDriveService.downloadFile(file.getId());
-                MatOfByte bytes = new MatOfByte(imageBytes);
+                bytes = new MatOfByte(imageBytes);
                 image = Imgcodecs.imdecode(bytes, Imgcodecs.IMREAD_COLOR);
+                
+                bytes.release(); // Free immediately after decoding
+                bytes = null;
 
                 if (image.empty()) {
                     failed++;
@@ -186,7 +195,7 @@ public class PhotoMatchingService {
                 image = resizeImageIfNeeded(image);
 
                 // Run face detector
-                Mat faces = faceDetector.detectFace(image);
+                faces = faceDetector.detectFace(image);
 
                 if (faces.empty() || faces.rows() == 0) {
                     // Save photo even if no faces found (with empty embedding) so we don't re-download next time
@@ -208,6 +217,7 @@ public class PhotoMatchingService {
                     Mat feature = faceRecognitionService.getFeature(image, detectedFace);
 
                     if (feature.empty()) {
+                        feature.release();
                         continue;
                     }
 
@@ -222,6 +232,7 @@ public class PhotoMatchingService {
                     );
 
                     drivePhotoFaceRepository.save(faceRecord);
+                    feature.release(); // Free embedding Mat
                 }
 
                 newlySynced++;
@@ -230,6 +241,12 @@ public class PhotoMatchingService {
                 failed++;
                 System.err.println("Could not sync " + file.getName() + ": " + e.getMessage());
             } finally {
+                if (bytes != null) {
+                    bytes.release();
+                }
+                if (faces != null) {
+                    faces.release();
+                }
                 if (image != null && !image.empty()) {
                     image.release();
                 }
