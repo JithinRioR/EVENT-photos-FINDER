@@ -151,6 +151,9 @@ public class PhotoMatchingService {
     public Map<String, Object> syncPhotos(String folderId) throws Exception {
         Map<String, Object> result = new HashMap<>();
 
+        // Clear any old corrupt cached records for this event folder first
+        drivePhotoFaceRepository.deleteByFolderId(folderId);
+
         // Fetch all current files in the Google Drive parent folder
         List<File> driveFiles = googleDriveService.getDriveFiles(folderId);
         int totalImages = 0;
