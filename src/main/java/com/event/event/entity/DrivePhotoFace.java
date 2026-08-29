@@ -17,7 +17,6 @@ public class DrivePhotoFace {
     @Column(length = 2083)
     private String webViewLink;  // Link to open photo on Drive
 
-    @Lob
     @Column(columnDefinition = "TEXT")
     private String embedding;    // 128-float face feature array serialized as comma-separated text
 
