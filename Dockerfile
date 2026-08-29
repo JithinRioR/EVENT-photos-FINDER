@@ -1,33 +1,31 @@
 # Stage 1: Build the application
-FROM maven:3.8.5-openjdk-17-slim AS build
+FROM maven:3.9-eclipse-temurin-17 AS build
 
 WORKDIR /app
 
-# Copy pom.xml first for dependency caching
+# Copy pom.xml and download dependencies
 COPY pom.xml .
-
-# Download dependencies
 RUN mvn dependency:go-offline -B
 
-# Copy application source code
+# Copy source code
 COPY src ./src
 
-# Build the Spring Boot JAR
+# Build the application
 RUN mvn clean package -DskipTests -B
 
 
 # Stage 2: Runtime image
-FROM openjdk:17-slim
+FROM eclipse-temurin:17-jre-jammy
 
 WORKDIR /app
 
-# Install native libraries required by OpenCV
+# Install native dependencies required for OpenCV
 RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the generated JAR
+# Copy generated JAR
 COPY --from=build /app/target/*.jar app.jar
 
 EXPOSE 8080
