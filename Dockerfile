@@ -30,4 +30,5 @@ COPY --from=build /app/target/*.jar app.jar
 
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Run the application with optimized memory settings for 512MB container
+CMD ["java", "-XX:MaxRAMPercentage=50.0", "-XX:+UseSerialGC", "-Xss256k", "-jar", "app.jar"]
