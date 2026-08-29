@@ -4,7 +4,9 @@ import com.google.api.services.drive.model.File;
 
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfByte;
+import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
+import org.opencv.imgproc.Imgproc;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -28,6 +30,18 @@ public class PhotoMatchingService {
         this.googleDriveService = googleDriveService;
     }
 
+    private Mat resizeImageIfNeeded(Mat image) {
+        int maxDim = 800;
+        if (image.cols() > maxDim || image.rows() > maxDim) {
+            double scale = (double) maxDim / Math.max(image.cols(), image.rows());
+            Mat resized = new Mat();
+            Imgproc.resize(image, resized, new Size((int)(image.cols() * scale), (int)(image.rows() * scale)));
+            image.release(); // Free original high-res image memory immediately
+            return resized;
+        }
+        return image;
+    }
+
     public List<File> findMatchingPhotos(
             MultipartFile selfie, String folderId) throws Exception {
 
@@ -47,11 +61,15 @@ public class PhotoMatchingService {
             throw new RuntimeException("Could not read selfie!");
         }
 
+        // Resize selfie if it's high resolution to save memory and speed up
+        selfieImage = resizeImageIfNeeded(selfieImage);
+
         // Detect face in selfie
         Mat selfieFaces =
                 faceDetector.detectFace(selfieImage);
 
         if (selfieFaces.empty() || selfieFaces.rows() == 0) {
+            selfieImage.release();
             throw new RuntimeException(
                     "No face detected in selfie!"
             );
@@ -79,6 +97,7 @@ public class PhotoMatchingService {
                 continue;
             }
 
+            Mat image = null;
             try {
 
                 // Download Drive image
@@ -90,8 +109,7 @@ public class PhotoMatchingService {
                 MatOfByte bytes =
                         new MatOfByte(imageBytes);
 
-                Mat image =
-                        Imgcodecs.imdecode(
+                image = Imgcodecs.imdecode(
                                 bytes,
                                 Imgcodecs.IMREAD_COLOR
                         );
@@ -100,11 +118,15 @@ public class PhotoMatchingService {
                     continue;
                 }
 
+                // Resize downloaded image to save memory and speed up detection
+                image = resizeImageIfNeeded(image);
+
                 // Detect faces
                 Mat faces =
                         faceDetector.detectFace(image);
 
                 if (faces.empty() || faces.rows() == 0) {
+                    image.release();
                     continue;
                 }
 
@@ -153,9 +175,14 @@ public class PhotoMatchingService {
                                 + ": "
                                 + e.getMessage()
                 );
+            } finally {
+                if (image != null && !image.empty()) {
+                    image.release(); // Explicitly free native memory
+                }
             }
         }
 
+        selfieImage.release(); // Explicitly free native memory
         return matches;
     }
 }
