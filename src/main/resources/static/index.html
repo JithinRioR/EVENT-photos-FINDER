@@ -405,31 +405,184 @@
         .photo-card {
             background: rgba(255,255,255,0.06);
             border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 12px;
-            padding: 16px;
+            border-radius: 14px;
+            padding: 12px;
             text-align: center;
             transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
 
-        .photo-card:hover { border-color: #a78bfa; transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
-        .photo-card .card-icon { font-size: 44px; margin-bottom: 8px; }
-        .photo-card .card-name { font-size: 12px; color: rgba(255,255,255,0.6); margin-bottom: 10px; word-break: break-all; }
-        .photo-card .card-buttons { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+        .photo-card:hover { border-color: #a78bfa; transform: translateY(-3px); box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+        
+        .photo-card-img-wrap {
+            width: 100%;
+            height: 150px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 10px;
+            cursor: pointer;
+            background: rgba(0, 0, 0, 0.35);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
 
-        .photo-card a {
-            display: inline-block;
-            padding: 7px 14px;
+        .photo-card-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .photo-card-img-wrap:hover .photo-card-img {
+            transform: scale(1.08);
+        }
+
+        .photo-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.4);
+            opacity: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.2s ease;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .photo-card-img-wrap:hover .photo-overlay {
+            opacity: 1;
+        }
+
+        .photo-card .card-name { 
+            font-size: 12px; 
+            color: rgba(255,255,255,0.7); 
+            margin-bottom: 10px; 
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .photo-card .card-buttons { 
+            display: flex; 
+            gap: 6px; 
+            justify-content: center; 
+            margin-top: auto; 
+        }
+
+        .photo-card .btn-card {
+            flex: 1;
+            padding: 7px 10px;
             color: #fff;
             text-decoration: none;
+            border: none;
             border-radius: 8px;
             font-size: 12px;
             font-weight: 500;
+            cursor: pointer;
             transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
         }
 
-        .photo-card a.open-btn { background: linear-gradient(135deg, #a78bfa, #ec4899); }
-        .photo-card a.download-btn { background: linear-gradient(135deg, #10b981, #059669); }
-        .photo-card a:hover { transform: scale(1.05); }
+        .photo-card .open-btn { background: linear-gradient(135deg, #a78bfa, #ec4899); }
+        .photo-card .download-btn { background: linear-gradient(135deg, #10b981, #059669); }
+        .photo-card .btn-card:hover { transform: scale(1.04); opacity: 0.95; }
+
+        /* ========== LIGHTBOX MODAL ========== */
+        .lightbox-modal {
+            display: none;
+            position: fixed;
+            z-index: 99999;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(10, 10, 25, 0.9);
+            backdrop-filter: blur(10px);
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .lightbox-modal.active {
+            display: flex;
+        }
+
+        .lightbox-content {
+            position: relative;
+            max-width: 90vw;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(30, 27, 75, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8);
+            animation: fadeInScale 0.25s ease-out;
+        }
+
+        @keyframes fadeInScale {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .lightbox-img {
+            max-width: 85vw;
+            max-height: 75vh;
+            object-fit: contain;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: 10px;
+            right: 14px;
+            font-size: 28px;
+            color: rgba(255, 255, 255, 0.8);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            line-height: 1;
+            transition: transform 0.2s, color 0.2s;
+        }
+
+        .lightbox-close:hover {
+            color: #ec4899;
+            transform: scale(1.2);
+        }
+
+        .lightbox-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            margin-top: 12px;
+            padding: 0 6px;
+            gap: 15px;
+        }
+
+        .lightbox-caption {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.85);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 70%;
+        }
 
         /* ========== ADMIN ========== */
         .login-box {
@@ -700,6 +853,19 @@
         </div>
 
     </div>
+
+    <!-- Fullscreen In-App Photo Lightbox -->
+    <div id="imageLightbox" class="lightbox-modal" onclick="closeLightbox(event)">
+        <div class="lightbox-content" onclick="event.stopPropagation()">
+            <button class="lightbox-close" onclick="closeLightbox(event)">&times;</button>
+            <img id="lightboxImg" src="" alt="Full view" class="lightbox-img">
+            <div class="lightbox-footer">
+                <span id="lightboxCaption" class="lightbox-caption"></span>
+                <a id="lightboxDownload" href="#" class="btn btn-success btn-sm" download style="text-decoration:none;">⬇️ Download Photo</a>
+            </div>
+        </div>
+    </div>
+
 <script>
 
     let capturedBlob = null;
@@ -908,13 +1074,18 @@
             let grid = '<div class="results-grid">';
             photos.forEach(photo => {
                 const dl = '/api/photos/download/' + photo.id + '?name=' + encodeURIComponent(photo.name);
+                const viewUrl = '/api/photos/view/' + photo.id;
+                const safeName = photo.name.replace(/'/g, "\\'");
                 grid += `
                     <div class="photo-card">
-                        <div class="card-icon">🖼️</div>
-                        <div class="card-name">${photo.name}</div>
+                        <div class="photo-card-img-wrap" onclick="openLightbox('${viewUrl}', '${safeName}')">
+                            <img src="${viewUrl}" alt="${photo.name}" class="photo-card-img" loading="lazy">
+                            <div class="photo-overlay"><span>🔍 View Full</span></div>
+                        </div>
+                        <div class="card-name" title="${photo.name}">${photo.name}</div>
                         <div class="card-buttons">
-                            <a href="${photo.webViewLink}" target="_blank" class="open-btn">📷 Open</a>
-                            <a href="${dl}" class="download-btn" download>⬇️ Download</a>
+                            <button class="btn-card open-btn" onclick="openLightbox('${viewUrl}', '${safeName}')">👁️ View</button>
+                            <a href="${dl}" class="btn-card download-btn" download>⬇️ Download</a>
                         </div>
                     </div>`;
             });
@@ -940,9 +1111,16 @@
             }
             let html = '<div class="file-count">' + files.length + ' file(s)</div>';
             files.forEach(f => {
-                const icon = (f.mimeType && f.mimeType.startsWith('image/')) ? '🖼️' : '📄';
-                html += `<a href="${f.webViewLink || '#'}" target="_blank" class="file-item">
-                    <span class="icon">${icon}</span><span>${f.name}</span></a>`;
+                const isImage = f.mimeType && f.mimeType.startsWith('image/');
+                const icon = isImage ? '🖼️' : '📄';
+                const safeName = f.name.replace(/'/g, "\\'");
+                if (isImage) {
+                    html += `<a href="javascript:void(0)" onclick="openLightbox('/api/photos/view/${f.id}', '${safeName}')" class="file-item">
+                        <span class="icon">${icon}</span><span>${f.name}</span></a>`;
+                } else {
+                    html += `<a href="${f.webViewLink || '#'}" target="_blank" class="file-item">
+                        <span class="icon">${icon}</span><span>${f.name}</span></a>`;
+                }
             });
             container.innerHTML = html;
         } catch (err) {
@@ -1066,13 +1244,18 @@
             }
             let html = '';
             files.forEach(f => {
-                const icon = (f.mimeType && f.mimeType.startsWith('image/')) ? '🖼️' : '📄';
+                const isImage = f.mimeType && f.mimeType.startsWith('image/');
+                const icon = isImage ? '🖼️' : '📄';
                 const safeName = f.name.replace(/'/g, "\\'");
+                const viewBtn = isImage
+                    ? `<button class="btn btn-primary btn-sm" onclick="openLightbox('/api/photos/view/${f.id}', '${safeName}')">👁️ View</button>`
+                    : `<a href="${f.webViewLink || '#'}" target="_blank" class="btn btn-primary btn-sm">👁️ View</a>`;
+
                 html += `<div class="photo-item" id="pi-${f.id}">
                     <div class="p-info"><span class="p-icon">${icon}</span><span class="p-name">${f.name}</span></div>
                     <div class="p-actions">
-                        <a href="${f.webViewLink || '#'}" target="_blank" class="btn btn-primary btn-sm">👁️ View</a>
-                        <button class="btn btn-danger" onclick="deletePhoto('${f.id}', '${safeName}')">🗑️ Delete</button>
+                        ${viewBtn}
+                        <button class="btn btn-danger btn-sm" onclick="deletePhoto('${f.id}', '${safeName}')">🗑️ Delete</button>
                     </div></div>`;
             });
             html += '<div style="text-align:center;margin-top:12px;color:rgba(255,255,255,0.35);font-size:12px;">'
@@ -1141,6 +1324,30 @@
             btn.innerHTML = '🔄 Sync Photos from Drive';
         }
     }
+
+    // ==================== IN-APP LIGHTBOX VIEWER ====================
+    function openLightbox(imageUrl, imageName) {
+        const modal = document.getElementById('imageLightbox');
+        const img = document.getElementById('lightboxImg');
+        const caption = document.getElementById('lightboxCaption');
+        const dlBtn = document.getElementById('lightboxDownload');
+        
+        img.src = imageUrl;
+        caption.textContent = imageName;
+        dlBtn.href = imageUrl.replace('/view/', '/download/') + '?name=' + encodeURIComponent(imageName);
+        modal.classList.add('active');
+    }
+
+    function closeLightbox(event) {
+        const modal = document.getElementById('imageLightbox');
+        modal.classList.remove('active');
+        document.getElementById('lightboxImg').src = '';
+    }
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeLightbox();
+    });
 
     // ==================== HELPERS ====================
     function showStatus(el, type, msg) {

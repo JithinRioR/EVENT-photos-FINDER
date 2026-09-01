@@ -116,6 +116,24 @@ public class PhotoMatchingController {
         }
     }
 
+    // View/Stream a photo directly for inline display
+    @GetMapping("/view/{fileId}")
+    public ResponseEntity<byte[]> viewPhoto(@PathVariable String fileId) {
+        try {
+            byte[] data = googleDriveService.downloadFile(fileId);
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline")
+                    .contentType(MediaType.IMAGE_JPEG)
+                    .body(data);
+
+        } catch (Exception e) {
+            System.err.println("View photo error for " + fileId + ": " + e.getMessage());
+            return ResponseEntity.notFound().build();
+        }
+    }
+
     // ============ ADMIN ENDPOINTS ============
 
     // Sync files and extract faces into local DB cache
