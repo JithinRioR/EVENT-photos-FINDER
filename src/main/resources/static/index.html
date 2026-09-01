@@ -11,7 +11,12 @@
 
         body {
             font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            background: 
+                radial-gradient(circle at 10% 20%, rgba(147, 51, 234, 0.28) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(236, 72, 153, 0.24) 0%, transparent 45%),
+                radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.18) 0%, transparent 60%),
+                linear-gradient(135deg, #090717 0%, #110d2b 50%, #080616 100%);
+            background-attachment: fixed;
             min-height: 100vh;
             color: #fff;
         }
@@ -169,12 +174,33 @@
         }
 
         .page-header h1 {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
             font-size: 32px;
             font-weight: 700;
-            background: linear-gradient(to right, #a78bfa, #ec4899);
+            margin-bottom: 8px;
+        }
+
+        .header-icon-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, rgba(167, 139, 250, 0.25), rgba(236, 72, 153, 0.25));
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            font-size: 22px;
+            box-shadow: 0 4px 15px rgba(236, 72, 153, 0.25);
+        }
+
+        .header-title-text {
+            background: linear-gradient(135deg, #c084fc, #f472b6);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin-bottom: 6px;
+            letter-spacing: -0.3px;
         }
 
         .page-header p {
@@ -738,7 +764,7 @@
         <div class="page active" id="finderPage">
 
             <div class="page-header">
-                <h1>🔍 Find Your Photos</h1>
+                <h1><span class="header-icon-badge">🔍</span> <span class="header-title-text">Find Your Photos</span></h1>
                 <p>Select an event, browse all photos or find yourself using face recognition.</p>
             </div>
 
@@ -828,7 +854,7 @@
             <div id="adminContent" style="display: none;">
 
                 <div class="page-header">
-                    <h1>⚙️ Admin Panel</h1>
+                    <h1><span class="header-icon-badge">⚙️</span> <span class="header-title-text">Admin Panel</span></h1>
                     <p>Manage events, upload photos, and organize your Google Drive.</p>
                 </div>
 
