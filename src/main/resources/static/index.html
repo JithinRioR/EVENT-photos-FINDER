@@ -32,11 +32,33 @@
         }
 
         .navbar .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
             font-size: 20px;
             font-weight: 700;
-            background: linear-gradient(to right, #a78bfa, #ec4899);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .navbar .logo-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(135deg, rgba(167, 139, 250, 0.25), rgba(236, 72, 153, 0.25));
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            font-size: 22px;
+            box-shadow: 0 4px 15px rgba(236, 72, 153, 0.2);
+        }
+
+        .navbar .logo-text {
+            background: linear-gradient(135deg, #c084fc, #f472b6);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            letter-spacing: -0.3px;
         }
 
         .nav-tabs {
@@ -685,7 +707,10 @@
 
 <!-- ========== NAVBAR ========== -->
 <nav class="navbar">
-    <div class="logo">📸 Event Photo Finder</div>
+    <div class="logo" onclick="switchPage('finder')">
+        <span class="logo-badge">📸</span>
+        <span class="logo-text">Event Photo Finder</span>
+    </div>
     <div class="nav-tabs">
         <button class="nav-tab active" onclick="switchPage('finder')">
             🔍 Find Photos
@@ -714,21 +739,27 @@
 
             <div class="page-header">
                 <h1>🔍 Find Your Photos</h1>
-                <p>Select an event, upload your selfie or take one, and we'll find you.</p>
+                <p>Select an event, browse all photos or find yourself using face recognition.</p>
             </div>
 
             <!-- Event Selector -->
             <div class="card">
-                <div class="card-title">🎉 Choose Your Event</div>
+                <div class="card-title">🎉 Step 1: Choose Your Event</div>
                 <div class="select-wrapper">
                     <select class="form-select" id="folderSelect" onchange="onFolderSelected()">
                         <option value="">-- Loading events... --</option>
                     </select>
                 </div>
+                <div style="margin-top: 14px;">
+                    <button class="btn btn-secondary" id="browseAllBtn" onclick="viewAllPhotos()" style="width: 100%; justify-content: center; font-size: 13px;">
+                        🖼️ Browse All Event Photos (No Selfie Needed)
+                    </button>
+                </div>
             </div>
 
             <!-- Photo Input -->
             <div class="card">
+                <div class="card-title">✨ Step 2: Or Find Photos with Your Face</div>
                 <div class="input-tabs">
                     <button class="tab-btn active" onclick="switchTab('upload')">📁 Upload Photo</button>
                     <button class="tab-btn" onclick="switchTab('camera')">📷 Use Camera</button>
@@ -1039,6 +1070,59 @@
         document.getElementById('videoFeed').style.display = 'none';
     }
 
+    // ==================== BROWSE ALL EVENT PHOTOS ====================
+    async function viewAllPhotos() {
+        const status = document.getElementById('finderStatus');
+        const results = document.getElementById('results');
+
+        if (!selectedFolderId) {
+            showStatus(status, 'error', '⚠️ Please select an event folder first.');
+            return;
+        }
+
+        status.innerHTML = '<span class="spinner"></span> Loading all photos in this event...';
+        showStatus(status, 'info', 'Loading all event photos...');
+        results.innerHTML = '';
+
+        try {
+            const response = await fetch('/api/photos/list?folderId=' + encodeURIComponent(selectedFolderId));
+            if (!response.ok) throw new Error(await response.text());
+            const files = await response.json();
+            const imageFiles = files.filter(f => !f.mimeType || f.mimeType.startsWith('image/'));
+
+            if (imageFiles.length === 0) {
+                showStatus(status, 'error', '📂 No photos found in this event.');
+                return;
+            }
+
+            status.className = 'status-msg show success';
+            status.innerHTML = '🖼️ Showing all <strong>' + imageFiles.length + '</strong> photo(s) in this event:';
+
+            let grid = '<div class="results-grid">';
+            imageFiles.forEach(photo => {
+                const dl = '/api/photos/download/' + photo.id + '?name=' + encodeURIComponent(photo.name);
+                const viewUrl = '/api/photos/view/' + photo.id;
+                const safeName = photo.name.replace(/'/g, "\\'");
+                grid += `
+                    <div class="photo-card">
+                        <div class="photo-card-img-wrap" onclick="openLightbox('${viewUrl}', '${safeName}')">
+                            <img src="${viewUrl}" alt="${photo.name}" class="photo-card-img" loading="lazy">
+                            <div class="photo-overlay"><span>🔍 View Full</span></div>
+                        </div>
+                        <div class="card-name" title="${photo.name}">${photo.name}</div>
+                        <div class="card-buttons">
+                            <button class="btn-card open-btn" onclick="openLightbox('${viewUrl}', '${safeName}')">👁️ View</button>
+                            <a href="${dl}" class="btn-card download-btn" download>⬇️ Download</a>
+                        </div>
+                    </div>`;
+            });
+            grid += '</div>';
+            results.innerHTML = grid;
+        } catch (error) {
+            showStatus(status, 'error', '❌ Error loading photos: ' + error.message);
+        }
+    }
+
     // ==================== FIND PHOTOS ====================
     async function findPhotos() {
         const fileInput = document.getElementById('fileInput');
@@ -1109,7 +1193,11 @@
                 container.innerHTML = '<div class="sidebar-placeholder">No files in this event.</div>';
                 return;
             }
-            let html = '<div class="file-count">' + files.length + ' file(s)</div>';
+            let html = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <span class="file-count" style="margin-bottom:0;">${files.length} file(s)</span>
+                    <button class="btn btn-secondary btn-sm" onclick="viewAllPhotos()" style="padding:4px 10px; font-size:11px; cursor:pointer;">🖼️ View Gallery</button>
+                </div>`;
             files.forEach(f => {
                 const isImage = f.mimeType && f.mimeType.startsWith('image/');
                 const icon = isImage ? '🖼️' : '📄';
