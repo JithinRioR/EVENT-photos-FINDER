@@ -1224,7 +1224,10 @@
         const results = document.getElementById('results');
         const searchBtn = document.getElementById('searchBtn');
 
-        if (!selectedFolderId) { status.innerHTML = '⚠️ Please select an event folder first.'; return; }
+        if (!selectedFolderId) { 
+            showStatus(status, 'error', '⚠️ Please select an event from the dropdown above first.'); 
+            return; 
+        }
 
         const formData = new FormData();
         if (capturedBlob) {
@@ -1232,13 +1235,12 @@
         } else if (fileInput.files.length) {
             formData.append('selfie', fileInput.files[0]);
         } else {
-            status.innerHTML = '⚠️ Please upload a photo or capture one.';
+            showStatus(status, 'error', '⚠️ Please upload a selfie or capture one using your camera.');
             return;
         }
 
         formData.append('folderId', selectedFolderId);
-        status.innerHTML = '<span class="spinner"></span> Searching your event photos...';
-        showStatus(status, 'info', 'Matching your face with event photos...');
+        showStatus(status, 'info', '<span class="spinner"></span> Scanning and matching your face with event photos...');
         results.innerHTML = '';
         searchBtn.disabled = true;
 
