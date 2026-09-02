@@ -29,20 +29,44 @@ public class GoogleDriveService {
 
     public Drive getDriveService() throws Exception {
 
-        InputStream credentialsStream;
-        String envCredentials = System.getenv("GOOGLE_DRIVE_CREDENTIALS");
+        InputStream credentialsStream = null;
+
+        // Check environment variables first (for Render / cloud)
+        String envCredentials = System.getenv("GOOGLE_CREDENTIALS_JSON");
+        if (envCredentials == null || envCredentials.trim().isEmpty()) {
+            envCredentials = System.getenv("GOOGLE_DRIVE_CREDENTIALS");
+        }
+        if (envCredentials == null || envCredentials.trim().isEmpty()) {
+            envCredentials = System.getenv("GOOGLE_CREDENTIALS");
+        }
 
         if (envCredentials != null && !envCredentials.trim().isEmpty()) {
             credentialsStream = new java.io.ByteArrayInputStream(
                     envCredentials.getBytes(java.nio.charset.StandardCharsets.UTF_8)
             );
         } else {
-            credentialsStream = getClass().getResourceAsStream(CREDENTIALS_FILE);
-            if (credentialsStream == null) {
-                throw new RuntimeException(
-                        "Google credentials file not found in resources and GOOGLE_DRIVE_CREDENTIALS env var not set."
-                );
+            // Fallback to ClassPathResource inside JAR / resources
+            try {
+                org.springframework.core.io.ClassPathResource resource =
+                        new org.springframework.core.io.ClassPathResource(
+                                "credentials/metal-dimension-506709-e5-dafe3e9c0a4a.json"
+                        );
+                if (resource.exists()) {
+                    credentialsStream = resource.getInputStream();
+                }
+            } catch (Exception e) {
+                System.err.println("Could not load credentials from ClassPathResource: " + e.getMessage());
             }
+
+            if (credentialsStream == null) {
+                credentialsStream = getClass().getResourceAsStream(CREDENTIALS_FILE);
+            }
+        }
+
+        if (credentialsStream == null) {
+            throw new RuntimeException(
+                    "Google Drive credentials not found! Please set GOOGLE_CREDENTIALS_JSON environment variable in Render."
+            );
         }
 
         // Full DRIVE scope to allow creating folders, uploading, deleting
