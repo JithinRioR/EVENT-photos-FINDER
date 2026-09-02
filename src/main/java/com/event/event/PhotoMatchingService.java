@@ -80,18 +80,28 @@ public class PhotoMatchingService {
         return feature;
     }
 
+    private byte[] downloadPhotoBytes(File file) throws Exception {
+        String name = file.getName() != null ? file.getName().toLowerCase() : "";
+        if ((name.endsWith(".cr2") || name.endsWith(".cr3") || name.endsWith(".nef") || name.endsWith(".arw") || name.endsWith(".dng") || name.endsWith(".raw"))
+                && file.getThumbnailLink() != null && !file.getThumbnailLink().isBlank()) {
+            String highResThumb = file.getThumbnailLink().replaceAll("=s\\d+", "=s1200");
+            try (java.io.InputStream in = new java.net.URL(highResThumb).openStream()) {
+                return in.readAllBytes();
+            }
+        }
+        return googleDriveService.downloadFile(file.getId());
+    }
+
     private boolean isSupportedImage(File f) {
         if (f == null || f.getName() == null) return false;
         String name = f.getName().toLowerCase();
-        // Skip heavy camera RAW formats (.cr2, .nef, .arw, .dng, .raw) that OpenCV cannot decode
-        if (name.endsWith(".cr2") || name.endsWith(".nef") || name.endsWith(".arw")
-                || name.endsWith(".dng") || name.endsWith(".raw") || name.endsWith(".cr3")) {
-            return false;
-        }
         if (name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png") || name.endsWith(".webp") || name.endsWith(".bmp")) {
             return true;
         }
-        return f.getMimeType() != null && f.getMimeType().startsWith("image/") && !f.getMimeType().contains("raw");
+        if (name.endsWith(".cr2") || name.endsWith(".cr3") || name.endsWith(".nef") || name.endsWith(".arw") || name.endsWith(".dng") || name.endsWith(".raw")) {
+            return f.getThumbnailLink() != null && !f.getThumbnailLink().isBlank();
+        }
+        return f.getMimeType() != null && f.getMimeType().startsWith("image/");
     }
 
     // ==========================================
@@ -138,7 +148,66 @@ public class PhotoMatchingService {
             throw new RuntimeException("Could not extract facial features from selfie.");
         }
 
-        // 1. Check existing cached faces in DB
+        // 1. Index any unindexed image files in Google Drive in parallel
+        List<File> driveFiles = googleDriveService.getDriveFiles(folderId);
+        List<File> unsyncedFiles = new ArrayList<>();
+        for (File f : driveFiles) {
+            if (isSupportedImage(f) && !drivePhotoFaceRepository.existsByFileId(f.getId())) {
+                unsyncedFiles.add(f);
+            }
+        }
+
+        if (!unsyncedFiles.isEmpty()) {
+            System.out.println("Parallel indexing " + unsyncedFiles.size() + " new photos for folder " + folderId + "...");
+            List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+            for (File file : unsyncedFiles) {
+                CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                    try {
+                        byte[] imageBytes = downloadPhotoBytes(file);
+                        MatOfByte bytes = new MatOfByte(imageBytes);
+                        Mat image = Imgcodecs.imdecode(bytes, Imgcodecs.IMREAD_COLOR);
+                        bytes.release();
+
+                        if (image.empty()) {
+                            System.out.println("SKIPPED " + file.getName() + " (fileId=" + file.getId() + "): OpenCV could not decode image");
+                            return;
+                        }
+
+                        image = resizeImageIfNeeded(image);
+                        Mat faces = faceDetector.detectFace(image);
+
+                        if (faces.empty() || faces.rows() == 0) {
+                            DrivePhotoFace emptyFace = new DrivePhotoFace(file.getId(), file.getName(), folderId, file.getWebViewLink(), "");
+                            drivePhotoFaceRepository.save(emptyFace);
+                        } else {
+                            for (int i = 0; i < faces.rows(); i++) {
+                                Mat detectedFace = faces.row(i);
+                                Mat feature = faceRecognitionService.getFeature(image, detectedFace);
+                                if (feature.empty()) continue;
+
+                                String serializedFeature = serializeEmbedding(feature);
+                                DrivePhotoFace faceRecord = new DrivePhotoFace(file.getId(), file.getName(), folderId, file.getWebViewLink(), serializedFeature);
+                                drivePhotoFaceRepository.save(faceRecord);
+                                feature.release();
+                            }
+                        }
+
+                        faces.release();
+                        image.release();
+
+                    } catch (Exception e) {
+                        System.err.println("SKIPPED " + file.getName() + " (fileId=" + file.getId() + "): " + e.getMessage());
+                    }
+                }, workerPool);
+
+                futures.add(future);
+            }
+
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        }
+
+        // 2. Perform lightning-fast comparison against all indexed faces in the database
         List<DrivePhotoFace> dbFaces = drivePhotoFaceRepository.findByFolderId(folderId);
 
         for (DrivePhotoFace dbFace : dbFaces) {
@@ -175,73 +244,6 @@ public class PhotoMatchingService {
             } finally {
                 if (dbFeatureMat != null) {
                     dbFeatureMat.release();
-                }
-            }
-        }
-
-        // 2. Check if there are any unindexed image files in Google Drive
-        List<File> driveFiles = googleDriveService.getDriveFiles(folderId);
-        List<File> unsyncedFiles = new ArrayList<>();
-        for (File f : driveFiles) {
-            if (isSupportedImage(f) && !drivePhotoFaceRepository.existsByFileId(f.getId())) {
-                unsyncedFiles.add(f);
-            }
-        }
-
-        // Process any unindexed photos directly
-        if (!unsyncedFiles.isEmpty()) {
-            System.out.println("Processing " + unsyncedFiles.size() + " unindexed photos on the fly for folder " + folderId + "...");
-            for (File file : unsyncedFiles) {
-                try {
-                    byte[] imageBytes = googleDriveService.downloadFile(file.getId());
-                    MatOfByte bytes = new MatOfByte(imageBytes);
-                    Mat image = Imgcodecs.imdecode(bytes, Imgcodecs.IMREAD_COLOR);
-                    bytes.release();
-
-                    if (image.empty()) continue;
-
-                    image = resizeImageIfNeeded(image);
-                    Mat faces = faceDetector.detectFace(image);
-
-                    if (faces.empty() || faces.rows() == 0) {
-                        DrivePhotoFace emptyFace = new DrivePhotoFace(file.getId(), file.getName(), folderId, file.getWebViewLink(), "");
-                        drivePhotoFaceRepository.save(emptyFace);
-                    } else {
-                        boolean fileMatched = false;
-                        for (int i = 0; i < faces.rows(); i++) {
-                            Mat detectedFace = faces.row(i);
-                            Mat feature = faceRecognitionService.getFeature(image, detectedFace);
-                            if (feature.empty()) continue;
-
-                            String serializedFeature = serializeEmbedding(feature);
-                            DrivePhotoFace faceRecord = new DrivePhotoFace(file.getId(), file.getName(), folderId, file.getWebViewLink(), serializedFeature);
-                            drivePhotoFaceRepository.save(faceRecord);
-
-                            if (!fileMatched && !matchedFileIds.contains(file.getId())) {
-                                for (Mat selfieFeature : selfieFeatures) {
-                                    double score = faceRecognitionService.compare(selfieFeature, feature);
-                                    if (score >= 0.34) {
-                                        matchedFileIds.add(file.getId());
-                                        File fileStub = new File();
-                                        fileStub.setId(file.getId());
-                                        fileStub.setName(file.getName());
-                                        fileStub.setWebViewLink(file.getWebViewLink());
-                                        fileStub.setThumbnailLink("https://lh3.googleusercontent.com/d/" + file.getId() + "=s400");
-                                        matches.add(fileStub);
-                                        fileMatched = true;
-                                        break;
-                                    }
-                                }
-                            }
-                            feature.release();
-                        }
-                    }
-
-                    faces.release();
-                    image.release();
-
-                } catch (Exception e) {
-                    System.err.println("Could not process " + file.getName() + " on the fly: " + e.getMessage());
                 }
             }
         }
@@ -296,7 +298,7 @@ public class PhotoMatchingService {
         Set<String> currentFileIds = new HashSet<>();
 
         for (File f : driveFiles) {
-            if (f.getMimeType() != null && f.getMimeType().startsWith("image/")) {
+            if (isSupportedImage(f)) {
                 imageFiles.add(f);
                 currentFileIds.add(f.getId());
             }
@@ -321,7 +323,7 @@ public class PhotoMatchingService {
                         return;
                     }
 
-                    byte[] imageBytes = googleDriveService.downloadFile(file.getId());
+                    byte[] imageBytes = downloadPhotoBytes(file);
                     MatOfByte bytes = new MatOfByte(imageBytes);
                     Mat image = Imgcodecs.imdecode(bytes, Imgcodecs.IMREAD_COLOR);
                     bytes.release();
