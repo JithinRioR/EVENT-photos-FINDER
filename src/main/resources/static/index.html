@@ -950,6 +950,13 @@
                 body: formData
             });
 
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(text.includes('<!DOCTYPE') || text.includes('<html') 
+                    ? 'Server is starting up. Please wait 15-30 seconds and try again!' 
+                    : text);
+            }
+
             const result = await response.json();
 
             if (result.status === 'success') {
@@ -958,11 +965,14 @@
                 document.getElementById('adminContent').style.display = 'block';
                 loadAdminEvents();
             } else {
-                showStatus(status, 'error', '❌ ' + result.message);
+                showStatus(status, 'error', '❌ ' + (result.message || 'Invalid credentials'));
             }
 
         } catch (err) {
-            showStatus(status, 'error', '❌ Login failed: ' + err.message);
+            const msg = (err.message && !err.message.includes('<!DOCTYPE') && !err.message.includes('<html'))
+                ? err.message
+                : 'Server is starting up. Please wait 15-30 seconds and try again!';
+            showStatus(status, 'error', '❌ ' + msg);
         }
     }
 
