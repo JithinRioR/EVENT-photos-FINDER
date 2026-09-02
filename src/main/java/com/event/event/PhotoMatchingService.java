@@ -128,6 +128,7 @@ public class PhotoMatchingService {
                     fileStub.setId(dbFace.getFileId());
                     fileStub.setName(dbFace.getFileName());
                     fileStub.setWebViewLink(dbFace.getWebViewLink());
+                    fileStub.setThumbnailLink("https://lh3.googleusercontent.com/d/" + dbFace.getFileId() + "=s400");
                     matches.add(fileStub);
                 }
             } catch (Exception e) {

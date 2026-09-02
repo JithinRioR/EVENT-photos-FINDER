@@ -92,7 +92,7 @@ public class GoogleDriveService {
         FileList result = drive.files().list()
                 .setQ(query)
                 .setPageSize(100)
-                .setFields("files(id,name,mimeType,webViewLink)")
+                .setFields("files(id,name,mimeType,webViewLink,thumbnailLink)")
                 .execute();
 
         return result.getFiles();

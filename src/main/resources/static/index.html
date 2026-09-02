@@ -1199,11 +1199,12 @@
             imageFiles.forEach(photo => {
                 const dl = '/api/photos/download/' + photo.id + '?name=' + encodeURIComponent(photo.name);
                 const viewUrl = '/api/photos/view/' + photo.id;
+                const thumbUrl = photo.thumbnailLink ? photo.thumbnailLink.replace(/=s\d+/, '=s400') : ('https://lh3.googleusercontent.com/d/' + photo.id + '=s400');
                 const safeName = photo.name.replace(/'/g, "\\'");
                 html += `
                     <div class="photo-card">
                         <div class="photo-card-img-wrap" onclick="openLightbox('${viewUrl}', '${safeName}')">
-                            <img src="${viewUrl}" alt="${photo.name}" class="photo-card-img" loading="lazy">
+                            <img src="${thumbUrl}" alt="${photo.name}" class="photo-card-img" loading="lazy" onerror="this.onerror=null; this.src='${viewUrl}';">
                             <div class="photo-overlay"><span>🔍 View Full</span></div>
                         </div>
                         <div class="card-name" title="${photo.name}">${photo.name}</div>
@@ -1273,11 +1274,12 @@
             photos.forEach(photo => {
                 const dl = '/api/photos/download/' + photo.id + '?name=' + encodeURIComponent(photo.name);
                 const viewUrl = '/api/photos/view/' + photo.id;
+                const thumbUrl = photo.thumbnailLink ? photo.thumbnailLink.replace(/=s\d+/, '=s400') : ('https://lh3.googleusercontent.com/d/' + photo.id + '=s400');
                 const safeName = photo.name.replace(/'/g, "\\'");
                 html += `
                     <div class="photo-card">
                         <div class="photo-card-img-wrap" onclick="openLightbox('${viewUrl}', '${safeName}')">
-                            <img src="${viewUrl}" alt="${photo.name}" class="photo-card-img" loading="lazy">
+                            <img src="${thumbUrl}" alt="${photo.name}" class="photo-card-img" loading="lazy" onerror="this.onerror=null; this.src='${viewUrl}';">
                             <div class="photo-overlay"><span>🔍 View Full</span></div>
                         </div>
                         <div class="card-name" title="${photo.name}">${photo.name}</div>
