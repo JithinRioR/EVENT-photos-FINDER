@@ -26,5 +26,5 @@ COPY --from=build /app/target/*.jar app.jar
 
 EXPOSE 8080
 
-# Run the application with optimized memory settings for 512MB container
-CMD ["java", "-XX:MaxRAMPercentage=35.0", "-XX:+UseSerialGC", "-Xss256k", "-jar", "app.jar"]
+# Run the application with balanced memory settings for 512MB container
+CMD ["java", "-XX:MaxRAMPercentage=60.0", "-XX:+UseSerialGC", "-Xss512k", "-jar", "app.jar"]
