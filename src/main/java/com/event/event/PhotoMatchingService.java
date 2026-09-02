@@ -45,7 +45,7 @@ public class PhotoMatchingService {
     }
 
     private Mat resizeImageIfNeeded(Mat image) {
-        int maxDim = 640;
+        int maxDim = 1080;
         if (image.cols() > maxDim || image.rows() > maxDim) {
             double scale = (double) maxDim / Math.max(image.cols(), image.rows());
             Mat resized = new Mat();
@@ -226,8 +226,8 @@ public class PhotoMatchingService {
                 for (Mat selfieFeature : selfieFeatures) {
                     double score = faceRecognitionService.compare(selfieFeature, dbFeatureMat);
 
-                    // SFace cosine similarity threshold (0.34 is optimal for real-world event photos)
-                    if (score >= 0.34) {
+                    // SFace cosine similarity threshold (0.363 is official SFace FR_COSINE threshold)
+                    if (score >= 0.363) {
                         matchedFileIds.add(dbFace.getFileId());
 
                         File fileStub = new File();
