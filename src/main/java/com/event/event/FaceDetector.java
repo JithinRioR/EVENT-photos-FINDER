@@ -59,7 +59,10 @@ public class FaceDetector {
             detector = FaceDetectorYN.create(
                     modelFile.getAbsolutePath(),
                     "",
-                    new Size(320, 320)
+                    new Size(320, 320),
+                    0.55f, // Score threshold (high sensitivity for group & angled faces)
+                    0.3f,  // NMS threshold
+                    5000   // Top K faces
             );
 
             System.out.println(
