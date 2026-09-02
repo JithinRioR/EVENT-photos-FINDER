@@ -30,7 +30,6 @@ public class PhotoMatchingService {
 
     private final Map<String, Map<String, Object>> syncProgressMap = new ConcurrentHashMap<>();
     private final ExecutorService syncExecutor = Executors.newSingleThreadExecutor();
-    private final ExecutorService workerPool = Executors.newFixedThreadPool(3);
 
     public PhotoMatchingService(
             FaceDetector faceDetector,
@@ -153,7 +152,7 @@ public class PhotoMatchingService {
             throw new RuntimeException("Could not extract facial features from selfie.");
         }
 
-        // 1. Index any unindexed image files in Google Drive in parallel
+        // 1. Process any unindexed image files safely (1 photo at a time to prevent RAM spikes)
         List<File> driveFiles = googleDriveService.getDriveFiles(folderId);
         List<File> unsyncedFiles = new ArrayList<>();
         for (File f : driveFiles) {
@@ -163,53 +162,47 @@ public class PhotoMatchingService {
         }
 
         if (!unsyncedFiles.isEmpty()) {
-            System.out.println("Parallel indexing " + unsyncedFiles.size() + " new photos for folder " + folderId + "...");
-            List<CompletableFuture<Void>> futures = new ArrayList<>();
-
+            System.out.println("Processing " + unsyncedFiles.size() + " new photos for folder " + folderId + "...");
             for (File file : unsyncedFiles) {
-                CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
-                    try {
-                        byte[] imageBytes = downloadPhotoBytes(file);
-                        MatOfByte bytes = new MatOfByte(imageBytes);
-                        Mat image = Imgcodecs.imdecode(bytes, Imgcodecs.IMREAD_COLOR);
-                        bytes.release();
+                try {
+                    byte[] imageBytes = downloadPhotoBytes(file);
+                    if (imageBytes == null || imageBytes.length == 0) continue;
 
-                        if (image.empty()) {
-                            System.out.println("SKIPPED " + file.getName() + " (fileId=" + file.getId() + "): OpenCV could not decode image");
-                            return;
-                        }
+                    MatOfByte bytes = new MatOfByte(imageBytes);
+                    Mat image = Imgcodecs.imdecode(bytes, Imgcodecs.IMREAD_COLOR);
+                    bytes.release();
 
-                        image = resizeImageIfNeeded(image);
-                        Mat faces = faceDetector.detectFace(image);
-
-                        if (faces.empty() || faces.rows() == 0) {
-                            DrivePhotoFace emptyFace = new DrivePhotoFace(file.getId(), file.getName(), folderId, file.getWebViewLink(), "");
-                            drivePhotoFaceRepository.save(emptyFace);
-                        } else {
-                            for (int i = 0; i < faces.rows(); i++) {
-                                Mat detectedFace = faces.row(i);
-                                Mat feature = faceRecognitionService.getFeature(image, detectedFace);
-                                if (feature.empty()) continue;
-
-                                String serializedFeature = serializeEmbedding(feature);
-                                DrivePhotoFace faceRecord = new DrivePhotoFace(file.getId(), file.getName(), folderId, file.getWebViewLink(), serializedFeature);
-                                drivePhotoFaceRepository.save(faceRecord);
-                                feature.release();
-                            }
-                        }
-
-                        faces.release();
-                        image.release();
-
-                    } catch (Exception e) {
-                        System.err.println("SKIPPED " + file.getName() + " (fileId=" + file.getId() + "): " + e.getMessage());
+                    if (image.empty()) {
+                        System.out.println("SKIPPED " + file.getName() + " (fileId=" + file.getId() + "): OpenCV could not decode image");
+                        continue;
                     }
-                }, workerPool);
 
-                futures.add(future);
+                    image = resizeImageIfNeeded(image);
+                    Mat faces = faceDetector.detectFace(image);
+
+                    if (faces.empty() || faces.rows() == 0) {
+                        DrivePhotoFace emptyFace = new DrivePhotoFace(file.getId(), file.getName(), folderId, file.getWebViewLink(), "");
+                        drivePhotoFaceRepository.save(emptyFace);
+                    } else {
+                        for (int i = 0; i < faces.rows(); i++) {
+                            Mat detectedFace = faces.row(i);
+                            Mat feature = faceRecognitionService.getFeature(image, detectedFace);
+                            if (feature.empty()) continue;
+
+                            String serializedFeature = serializeEmbedding(feature);
+                            DrivePhotoFace faceRecord = new DrivePhotoFace(file.getId(), file.getName(), folderId, file.getWebViewLink(), serializedFeature);
+                            drivePhotoFaceRepository.save(faceRecord);
+                            feature.release();
+                        }
+                    }
+
+                    faces.release();
+                    image.release();
+
+                } catch (Exception e) {
+                    System.err.println("SKIPPED " + file.getName() + " (fileId=" + file.getId() + "): " + e.getMessage());
+                }
             }
-
-            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
         }
 
         // 2. Perform lightning-fast comparison against all indexed faces in the database
@@ -317,91 +310,98 @@ public class PhotoMatchingService {
         AtomicInteger failed = new AtomicInteger(0);
         AtomicInteger processed = new AtomicInteger(0);
 
-        List<CompletableFuture<Void>> futures = new ArrayList<>();
-
         for (File file : imageFiles) {
-            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
-                try {
-                    // If already indexed in DB, skip download
-                    if (drivePhotoFaceRepository.existsByFileId(file.getId())) {
-                        alreadySynced.incrementAndGet();
-                        return;
-                    }
+            try {
+                // If already indexed in DB, skip download
+                if (drivePhotoFaceRepository.existsByFileId(file.getId())) {
+                    alreadySynced.incrementAndGet();
+                    processed.incrementAndGet();
+                    progress.put("processed", processed.get());
+                    progress.put("alreadySynced", alreadySynced.get());
+                    continue;
+                }
 
-                    byte[] imageBytes = downloadPhotoBytes(file);
-                    MatOfByte bytes = new MatOfByte(imageBytes);
-                    Mat image = Imgcodecs.imdecode(bytes, Imgcodecs.IMREAD_COLOR);
-                    bytes.release();
+                byte[] imageBytes = downloadPhotoBytes(file);
+                if (imageBytes == null || imageBytes.length == 0) {
+                    failed.incrementAndGet();
+                    processed.incrementAndGet();
+                    progress.put("processed", processed.get());
+                    progress.put("failed", failed.get());
+                    continue;
+                }
 
-                    if (image.empty()) {
-                        failed.incrementAndGet();
-                        return;
-                    }
+                MatOfByte bytes = new MatOfByte(imageBytes);
+                Mat image = Imgcodecs.imdecode(bytes, Imgcodecs.IMREAD_COLOR);
+                bytes.release();
 
-                    // Resize image to max 640px dimension
-                    image = resizeImageIfNeeded(image);
+                if (image.empty()) {
+                    failed.incrementAndGet();
+                    processed.incrementAndGet();
+                    progress.put("processed", processed.get());
+                    progress.put("failed", failed.get());
+                    continue;
+                }
 
-                    // Run face detector
-                    Mat faces = faceDetector.detectFace(image);
+                // Resize image to max 640px dimension
+                image = resizeImageIfNeeded(image);
 
-                    if (faces.empty() || faces.rows() == 0) {
-                        // Save photo even if no faces found (with empty embedding) so we don't re-download next time
-                        DrivePhotoFace emptyFace = new DrivePhotoFace(
+                // Run face detector
+                Mat faces = faceDetector.detectFace(image);
+
+                if (faces.empty() || faces.rows() == 0) {
+                    // Save photo even if no faces found (with empty embedding) so we don't re-download next time
+                    DrivePhotoFace emptyFace = new DrivePhotoFace(
+                            file.getId(),
+                            file.getName(),
+                            folderId,
+                            file.getWebViewLink(),
+                            ""
+                    );
+                    drivePhotoFaceRepository.save(emptyFace);
+                    newlySynced.incrementAndGet();
+                } else {
+                    // Save each detected face in this photo
+                    for (int i = 0; i < faces.rows(); i++) {
+                        Mat detectedFace = faces.row(i);
+                        Mat feature = faceRecognitionService.getFeature(image, detectedFace);
+
+                        if (feature.empty()) {
+                            feature.release();
+                            continue;
+                        }
+
+                        String serializedFeature = serializeEmbedding(feature);
+
+                        DrivePhotoFace faceRecord = new DrivePhotoFace(
                                 file.getId(),
                                 file.getName(),
                                 folderId,
                                 file.getWebViewLink(),
-                                ""
+                                serializedFeature
                         );
-                        drivePhotoFaceRepository.save(emptyFace);
-                        newlySynced.incrementAndGet();
-                    } else {
-                        // Save each detected face in this photo
-                        for (int i = 0; i < faces.rows(); i++) {
-                            Mat detectedFace = faces.row(i);
-                            Mat feature = faceRecognitionService.getFeature(image, detectedFace);
 
-                            if (feature.empty()) {
-                                feature.release();
-                                continue;
-                            }
-
-                            String serializedFeature = serializeEmbedding(feature);
-
-                            DrivePhotoFace faceRecord = new DrivePhotoFace(
-                                    file.getId(),
-                                    file.getName(),
-                                    folderId,
-                                    file.getWebViewLink(),
-                                    serializedFeature
-                            );
-
-                            drivePhotoFaceRepository.save(faceRecord);
-                            feature.release();
-                        }
-                        newlySynced.incrementAndGet();
+                        drivePhotoFaceRepository.save(faceRecord);
+                        feature.release();
                     }
-
-                    faces.release();
-                    image.release();
-
-                } catch (Exception e) {
-                    failed.incrementAndGet();
-                    System.err.println("Could not sync " + file.getName() + ": " + e.getMessage());
-                } finally {
-                    int p = processed.incrementAndGet();
-                    progress.put("processed", p);
-                    progress.put("newlySynced", newlySynced.get());
-                    progress.put("alreadySynced", alreadySynced.get());
-                    progress.put("failed", failed.get());
+                    newlySynced.incrementAndGet();
                 }
-            }, workerPool);
 
-            futures.add(future);
+                faces.release();
+                image.release();
+                int p = processed.incrementAndGet();
+                progress.put("processed", p);
+                progress.put("newlySynced", newlySynced.get());
+                progress.put("alreadySynced", alreadySynced.get());
+                progress.put("failed", failed.get());
+
+            } catch (Exception e) {
+                failed.incrementAndGet();
+                int p = processed.incrementAndGet();
+                progress.put("processed", p);
+                progress.put("failed", failed.get());
+                System.err.println("Could not sync " + file.getName() + ": " + e.getMessage());
+            }
         }
-
-        // Wait for all parallel photo indexing jobs to complete
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 
         // Clean up database records for files that were deleted from Google Drive
         List<DrivePhotoFace> cachedFolderFaces = drivePhotoFaceRepository.findByFolderId(folderId);
@@ -413,8 +413,10 @@ public class PhotoMatchingService {
             }
         }
 
-        progress.put("deletedFromCache", deletedFromCache);
         progress.put("status", "completed");
-        progress.put("message", "Sync completed successfully.");
+        progress.put("message", "Sync completed successfully! Processed: " + processed.get()
+                + ", New: " + newlySynced.get()
+                + ", Cached: " + alreadySynced.get()
+                + ", Cleaned: " + deletedFromCache);
     }
 }
