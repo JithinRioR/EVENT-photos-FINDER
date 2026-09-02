@@ -442,12 +442,70 @@
         @keyframes spin { to { transform: rotate(360deg); } }
 
         /* ========== RESULTS GRID ========== */
-        #results { max-width: 700px; margin: 0 auto; }
+        #results { max-width: 820px; margin: 0 auto; }
+
+        .results-header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 14px;
+            padding: 14px 20px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .results-count-badge {
+            font-size: 15px;
+            font-weight: 600;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .results-count-badge span.count {
+            color: #f472b6;
+            font-weight: 700;
+        }
+
+        .btn-download-all {
+            padding: 10px 22px;
+            font-size: 13px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #10b981, #059669);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);
+            border-radius: 10px;
+            cursor: pointer;
+            border: none;
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .btn-download-all:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.55);
+            background: linear-gradient(135deg, #34d399, #059669);
+        }
+
+        .btn-download-all:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
 
         .results-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-            gap: 14px;
+            gap: 16px;
         }
 
         .photo-card {
@@ -1096,6 +1154,8 @@
         document.getElementById('videoFeed').style.display = 'none';
     }
 
+    let currentLoadedPhotos = [];
+
     // ==================== BROWSE ALL EVENT PHOTOS ====================
     async function viewAllPhotos() {
         const status = document.getElementById('finderStatus');
@@ -1121,15 +1181,26 @@
                 return;
             }
 
-            status.className = 'status-msg show success';
-            status.innerHTML = '🖼️ Showing all <strong>' + imageFiles.length + '</strong> photo(s) in this event:';
+            currentLoadedPhotos = imageFiles;
+            status.className = 'status-msg';
+            status.style.display = 'none';
 
-            let grid = '<div class="results-grid">';
+            let html = `
+                <div class="results-header-bar">
+                    <div class="results-count-badge">
+                        🖼️ <span class="count">${imageFiles.length}</span> Event Photo(s)
+                    </div>
+                    <button class="btn-download-all" id="downloadAllBtn" onclick="downloadAllFoundPhotos()">
+                        📦 Download All (${imageFiles.length} Photos)
+                    </button>
+                </div>
+                <div class="results-grid">`;
+
             imageFiles.forEach(photo => {
                 const dl = '/api/photos/download/' + photo.id + '?name=' + encodeURIComponent(photo.name);
                 const viewUrl = '/api/photos/view/' + photo.id;
                 const safeName = photo.name.replace(/'/g, "\\'");
-                grid += `
+                html += `
                     <div class="photo-card">
                         <div class="photo-card-img-wrap" onclick="openLightbox('${viewUrl}', '${safeName}')">
                             <img src="${viewUrl}" alt="${photo.name}" class="photo-card-img" loading="lazy">
@@ -1142,14 +1213,14 @@
                         </div>
                     </div>`;
             });
-            grid += '</div>';
-            results.innerHTML = grid;
+            html += '</div>';
+            results.innerHTML = html;
         } catch (error) {
             showStatus(status, 'error', '❌ Error loading photos: ' + error.message);
         }
     }
 
-    // ==================== FIND PHOTOS ====================
+    // ==================== FIND PHOTOS (FACE MATCHING) ====================
     async function findPhotos() {
         const fileInput = document.getElementById('fileInput');
         const status = document.getElementById('finderStatus');
@@ -1170,6 +1241,7 @@
 
         formData.append('folderId', selectedFolderId);
         status.innerHTML = '<span class="spinner"></span> Searching your event photos...';
+        showStatus(status, 'info', 'Matching your face with event photos...');
         results.innerHTML = '';
         searchBtn.disabled = true;
 
@@ -1178,15 +1250,31 @@
             if (!response.ok) throw new Error(await response.text());
             const photos = await response.json();
 
-            if (photos.length === 0) { status.innerHTML = '😔 No matching photos found.'; return; }
-            status.innerHTML = '✅ Found ' + photos.length + ' matching photo(s)!';
+            if (photos.length === 0) { 
+                showStatus(status, 'error', '😔 No matching photos found containing your face.'); 
+                return; 
+            }
 
-            let grid = '<div class="results-grid">';
+            currentLoadedPhotos = photos;
+            status.className = 'status-msg';
+            status.style.display = 'none';
+
+            let html = `
+                <div class="results-header-bar">
+                    <div class="results-count-badge">
+                        ✨ Found <span class="count">${photos.length}</span> Matching Photo(s)!
+                    </div>
+                    <button class="btn-download-all" id="downloadAllBtn" onclick="downloadAllFoundPhotos()">
+                        📦 Download All (${photos.length} Photos)
+                    </button>
+                </div>
+                <div class="results-grid">`;
+
             photos.forEach(photo => {
                 const dl = '/api/photos/download/' + photo.id + '?name=' + encodeURIComponent(photo.name);
                 const viewUrl = '/api/photos/view/' + photo.id;
                 const safeName = photo.name.replace(/'/g, "\\'");
-                grid += `
+                html += `
                     <div class="photo-card">
                         <div class="photo-card-img-wrap" onclick="openLightbox('${viewUrl}', '${safeName}')">
                             <img src="${viewUrl}" alt="${photo.name}" class="photo-card-img" loading="lazy">
@@ -1199,12 +1287,56 @@
                         </div>
                     </div>`;
             });
-            grid += '</div>';
-            results.innerHTML = grid;
+            html += '</div>';
+            results.innerHTML = html;
         } catch (error) {
-            status.innerHTML = '❌ Error: ' + error.message;
+            showStatus(status, 'error', '❌ Error: ' + error.message);
         } finally {
             searchBtn.disabled = false;
+        }
+    }
+
+    // ==================== DOWNLOAD ALL (ZIP ARCHIVE) ====================
+    async function downloadAllFoundPhotos() {
+        if (!currentLoadedPhotos || currentLoadedPhotos.length === 0) {
+            alert('No photos available to download.');
+            return;
+        }
+
+        const dlBtn = document.getElementById('downloadAllBtn');
+        const origHtml = dlBtn ? dlBtn.innerHTML : '';
+        if (dlBtn) {
+            dlBtn.disabled = true;
+            dlBtn.innerHTML = '<span class="spinner"></span> Creating ZIP archive...';
+        }
+
+        try {
+            const payload = currentLoadedPhotos.map(p => ({ id: p.id, name: p.name }));
+            const response = await fetch('/api/photos/download-zip?zipName=my-event-photos.zip', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) throw new Error('Failed to generate ZIP archive');
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = 'my-event-photos.zip';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+        } catch (err) {
+            alert('Error downloading ZIP: ' + err.message);
+        } finally {
+            if (dlBtn) {
+                dlBtn.disabled = false;
+                dlBtn.innerHTML = origHtml;
+            }
         }
     }
 

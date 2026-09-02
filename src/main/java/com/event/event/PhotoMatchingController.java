@@ -9,10 +9,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 @RestController
 @RequestMapping("/api/photos")
@@ -131,6 +136,65 @@ public class PhotoMatchingController {
         } catch (Exception e) {
             System.err.println("View photo error for " + fileId + ": " + e.getMessage());
             return ResponseEntity.notFound().build();
+        }
+    }
+
+    // Download multiple photos as a single ZIP archive
+    @PostMapping("/download-zip")
+    public ResponseEntity<byte[]> downloadZip(
+            @RequestBody List<Map<String, String>> filesToZip,
+            @RequestParam(value = "zipName", defaultValue = "event-photos.zip") String zipName) {
+
+        if (filesToZip == null || filesToZip.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             ZipOutputStream zos = new ZipOutputStream(baos)) {
+
+            Set<String> addedNames = new HashSet<>();
+            for (Map<String, String> fileInfo : filesToZip) {
+                String fileId = fileInfo.get("id");
+                String fileName = fileInfo.getOrDefault("name", "photo.jpg");
+
+                if (fileId == null || fileId.isBlank()) continue;
+
+                // Ensure unique filenames inside zip
+                String uniqueName = fileName;
+                int counter = 1;
+                while (addedNames.contains(uniqueName)) {
+                    int dotIndex = fileName.lastIndexOf('.');
+                    if (dotIndex > 0) {
+                        uniqueName = fileName.substring(0, dotIndex) + "_" + counter + fileName.substring(dotIndex);
+                    } else {
+                        uniqueName = fileName + "_" + counter;
+                    }
+                    counter++;
+                }
+                addedNames.add(uniqueName);
+
+                try {
+                    byte[] fileData = googleDriveService.downloadFile(fileId);
+                    ZipEntry entry = new ZipEntry(uniqueName);
+                    zos.putNextEntry(entry);
+                    zos.write(fileData);
+                    zos.closeEntry();
+                } catch (Exception e) {
+                    System.err.println("Could not add file to zip: " + fileName + " (" + e.getMessage() + ")");
+                }
+            }
+
+            zos.finish();
+            byte[] zipBytes = baos.toByteArray();
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + zipName + "\"")
+                    .header(HttpHeaders.CONTENT_TYPE, "application/zip")
+                    .body(zipBytes);
+
+        } catch (Exception e) {
+            System.err.println("Zip creation error: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
         }
     }
 
