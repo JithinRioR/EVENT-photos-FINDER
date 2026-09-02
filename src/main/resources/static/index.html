@@ -992,6 +992,13 @@
         selectedFolderId = document.getElementById('folderSelect').value;
         document.getElementById('finderStatus').innerHTML = '';
         document.getElementById('results').innerHTML = '';
+
+        // Start background indexing immediately so photos are ready when user searches
+        if (selectedFolderId) {
+            const fd = new FormData();
+            fd.append('folderId', selectedFolderId);
+            fetch('/api/photos/admin/sync', { method: 'POST', body: fd }).catch(() => {});
+        }
     }
 
     // ==================== TAB SWITCHING ====================
@@ -1220,7 +1227,11 @@
             html += '</div>';
             results.innerHTML = html;
         } catch (error) {
-            showStatus(status, 'error', '❌ Error: ' + error.message);
+            console.error('Find photos error:', error);
+            const msg = (error && error.message && !error.message.includes('<!DOCTYPE') && !error.message.includes('<html'))
+                ? error.message
+                : 'Still processing event photos in the background. Please click "Find My Photos" again in a few seconds!';
+            showStatus(status, 'error', '❌ ' + msg);
         } finally {
             searchBtn.disabled = false;
         }
