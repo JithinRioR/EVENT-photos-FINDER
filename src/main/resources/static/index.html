@@ -1479,6 +1479,8 @@
         }
     }
 
+    let adminLoadedPhotos = [];
+
     // ==================== ADMIN: LOAD PHOTOS ====================
     async function loadAdminPhotos(folderId) {
         const container = document.getElementById('photosList');
@@ -1486,32 +1488,57 @@
         try {
             const response = await fetch('/api/photos/list?folderId=' + encodeURIComponent(folderId));
             const files = await response.json();
-            if (files.length === 0) {
-                container.innerHTML = '<div class="empty-state">No photos yet. Upload some above!</div>';
+            const imageFiles = files.filter(f => !f.mimeType || f.mimeType.startsWith('image/'));
+
+            if (imageFiles.length === 0) {
+                container.innerHTML = '<div class="empty-state">No photos in this event yet. Upload photos to Google Drive and click Sync!</div>';
                 return;
             }
-            let html = '';
-            files.forEach(f => {
-                const isImage = f.mimeType && f.mimeType.startsWith('image/');
-                const icon = isImage ? '🖼️' : '📄';
-                const safeName = f.name.replace(/'/g, "\\'");
-                const viewBtn = isImage
-                    ? `<button class="btn btn-primary btn-sm" onclick="openLightbox('/api/photos/view/${f.id}', '${safeName}')">👁️ View</button>`
-                    : `<a href="${f.webViewLink || '#'}" target="_blank" class="btn btn-primary btn-sm">👁️ View</a>`;
 
-                html += `<div class="photo-item" id="pi-${f.id}">
-                    <div class="p-info"><span class="p-icon">${icon}</span><span class="p-name">${f.name}</span></div>
-                    <div class="p-actions">
-                        ${viewBtn}
-                        <button class="btn btn-danger btn-sm" onclick="deletePhoto('${f.id}', '${safeName}')">🗑️ Delete</button>
-                    </div></div>`;
+            adminLoadedPhotos = imageFiles;
+
+            let html = `
+                <div class="results-header-bar" style="margin-bottom: 18px;">
+                    <div class="results-count-badge">
+                        📁 <span class="count">${imageFiles.length}</span> Photo(s) in this Event
+                    </div>
+                    <button class="btn-download-all" onclick="downloadAdminPhotosZip()">
+                        📦 Download All (${imageFiles.length})
+                    </button>
+                </div>
+                <div class="results-grid">`;
+
+            imageFiles.forEach(f => {
+                const dl = '/api/photos/download/' + f.id + '?name=' + encodeURIComponent(f.name);
+                const viewUrl = '/api/photos/view/' + f.id;
+                const thumbUrl = f.thumbnailLink ? f.thumbnailLink.replace(/=s\d+/, '=s400') : ('https://lh3.googleusercontent.com/d/' + f.id + '=s400');
+                const safeName = f.name.replace(/'/g, "\\'");
+
+                html += `
+                    <div class="photo-card" id="pi-${f.id}">
+                        <div class="photo-card-img-wrap" onclick="openLightbox('${viewUrl}', '${safeName}')">
+                            <img src="${thumbUrl}" alt="${f.name}" class="photo-card-img" loading="lazy" onerror="this.onerror=null; this.src='${viewUrl}';">
+                            <div class="photo-overlay"><span>🔍 View Full</span></div>
+                        </div>
+                        <div class="card-name" title="${f.name}">${f.name}</div>
+                        <div class="card-buttons" style="gap: 5px;">
+                            <button class="btn-card open-btn" onclick="openLightbox('${viewUrl}', '${safeName}')">👁️ View</button>
+                            <a href="${dl}" class="btn-card download-btn" download>⬇️ Save</a>
+                            <button class="btn-card" style="background:rgba(239,68,68,0.2);color:#ef4444;" onclick="deletePhoto('${f.id}', '${safeName}')">🗑️</button>
+                        </div>
+                    </div>`;
             });
-            html += '<div style="text-align:center;margin-top:12px;color:rgba(255,255,255,0.35);font-size:12px;">'
-                   + files.length + ' file(s)</div>';
+            html += '</div>';
             container.innerHTML = html;
         } catch (err) {
             container.innerHTML = '<div class="empty-state">❌ Error loading photos.</div>';
         }
+    }
+
+    async function downloadAdminPhotosZip() {
+        if (!adminLoadedPhotos || adminLoadedPhotos.length === 0) return;
+        currentLoadedPhotos = adminLoadedPhotos;
+        downloadAllFoundPhotos();
     }
 
     // ==================== ADMIN: DELETE PHOTO ====================
@@ -1523,7 +1550,7 @@
             const response = await fetch('/api/photos/admin/delete/' + fileId, { method: 'DELETE' });
             const result = await response.json();
             if (result.status === 'success') {
-                if (el) { el.style.transition = 'all 0.3s'; el.style.transform = 'translateX(50px)'; el.style.opacity = '0';
+                if (el) { el.style.transition = 'all 0.3s'; el.style.transform = 'scale(0.8)'; el.style.opacity = '0';
                     setTimeout(() => el.remove(), 300); }
             } else { throw new Error(result.message); }
         } catch (err) {

@@ -63,7 +63,7 @@ public class FaceRecognitionService {
     }
 
     // Create SFace feature from detected face
-    public Mat getFeature(Mat image, Mat faceDetection) {
+    public synchronized Mat getFeature(Mat image, Mat faceDetection) {
 
         Mat alignedFace = new Mat();
 
@@ -80,11 +80,14 @@ public class FaceRecognitionService {
                 feature
         );
 
-        return feature.clone();
+        alignedFace.release();
+        Mat result = feature.clone();
+        feature.release();
+        return result;
     }
 
     // Compare two SFace features
-    public double compare(Mat feature1, Mat feature2) {
+    public synchronized double compare(Mat feature1, Mat feature2) {
 
         return faceRecognizer.match(
                 feature1,

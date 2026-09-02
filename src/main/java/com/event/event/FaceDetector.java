@@ -75,7 +75,7 @@ public class FaceDetector {
         }
     }
 
-    public Mat detectFace(Mat image) {
+    public synchronized Mat detectFace(Mat image) {
 
         if (image == null || image.empty()) {
             return new Mat();

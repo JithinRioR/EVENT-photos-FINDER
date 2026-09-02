@@ -14,9 +14,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 public class PhotoMatchingService {
@@ -28,6 +30,7 @@ public class PhotoMatchingService {
 
     private final Map<String, Map<String, Object>> syncProgressMap = new ConcurrentHashMap<>();
     private final ExecutorService syncExecutor = Executors.newSingleThreadExecutor();
+    private final ExecutorService workerPool = Executors.newFixedThreadPool(3);
 
     public PhotoMatchingService(
             FaceDetector faceDetector,
@@ -42,7 +45,7 @@ public class PhotoMatchingService {
     }
 
     private Mat resizeImageIfNeeded(Mat image) {
-        int maxDim = 800;
+        int maxDim = 640;
         if (image.cols() > maxDim || image.rows() > maxDim) {
             double scale = (double) maxDim / Math.max(image.cols(), image.rows());
             Mat resized = new Mat();
@@ -204,104 +207,96 @@ public class PhotoMatchingService {
         int totalImages = imageFiles.size();
         progress.put("total", totalImages);
 
-        int newlySynced = 0;
-        int alreadySynced = 0;
-        int failed = 0;
-        int processed = 0;
+        AtomicInteger newlySynced = new AtomicInteger(0);
+        AtomicInteger alreadySynced = new AtomicInteger(0);
+        AtomicInteger failed = new AtomicInteger(0);
+        AtomicInteger processed = new AtomicInteger(0);
+
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
 
         for (File file : imageFiles) {
-            processed++;
-            progress.put("processed", processed);
-
-            // If already indexed in DB, skip download
-            if (drivePhotoFaceRepository.existsByFileId(file.getId())) {
-                alreadySynced++;
-                progress.put("alreadySynced", alreadySynced);
-                continue;
-            }
-
-            Mat image = null;
-            MatOfByte bytes = null;
-            Mat faces = null;
-            try {
-                // Download file bytes
-                byte[] imageBytes = googleDriveService.downloadFile(file.getId());
-                bytes = new MatOfByte(imageBytes);
-                image = Imgcodecs.imdecode(bytes, Imgcodecs.IMREAD_COLOR);
-                
-                bytes.release(); // Free immediately after decoding
-                bytes = null;
-
-                if (image.empty()) {
-                    failed++;
-                    progress.put("failed", failed);
-                    continue;
-                }
-
-                // Resize image to max 800px dimension
-                image = resizeImageIfNeeded(image);
-
-                // Run face detector
-                faces = faceDetector.detectFace(image);
-
-                if (faces.empty() || faces.rows() == 0) {
-                    // Save photo even if no faces found (with empty embedding) so we don't re-download next time
-                    DrivePhotoFace emptyFace = new DrivePhotoFace(
-                            file.getId(),
-                            file.getName(),
-                            folderId,
-                            file.getWebViewLink(),
-                            ""
-                    );
-                    drivePhotoFaceRepository.save(emptyFace);
-                    newlySynced++;
-                    progress.put("newlySynced", newlySynced);
-                    continue;
-                }
-
-                // Save each detected face in this photo
-                for (int i = 0; i < faces.rows(); i++) {
-                    Mat detectedFace = faces.row(i);
-                    Mat feature = faceRecognitionService.getFeature(image, detectedFace);
-
-                    if (feature.empty()) {
-                        feature.release();
-                        continue;
+            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                try {
+                    // If already indexed in DB, skip download
+                    if (drivePhotoFaceRepository.existsByFileId(file.getId())) {
+                        alreadySynced.incrementAndGet();
+                        return;
                     }
 
-                    String serializedFeature = serializeEmbedding(feature);
-
-                    DrivePhotoFace faceRecord = new DrivePhotoFace(
-                            file.getId(),
-                            file.getName(),
-                            folderId,
-                            file.getWebViewLink(),
-                            serializedFeature
-                    );
-
-                    drivePhotoFaceRepository.save(faceRecord);
-                    feature.release(); // Free embedding Mat
-                }
-
-                newlySynced++;
-                progress.put("newlySynced", newlySynced);
-
-            } catch (Exception e) {
-                failed++;
-                progress.put("failed", failed);
-                System.err.println("Could not sync " + file.getName() + ": " + e.getMessage());
-            } finally {
-                if (bytes != null) {
+                    byte[] imageBytes = googleDriveService.downloadFile(file.getId());
+                    MatOfByte bytes = new MatOfByte(imageBytes);
+                    Mat image = Imgcodecs.imdecode(bytes, Imgcodecs.IMREAD_COLOR);
                     bytes.release();
-                }
-                if (faces != null) {
+
+                    if (image.empty()) {
+                        failed.incrementAndGet();
+                        return;
+                    }
+
+                    // Resize image to max 640px dimension
+                    image = resizeImageIfNeeded(image);
+
+                    // Run face detector
+                    Mat faces = faceDetector.detectFace(image);
+
+                    if (faces.empty() || faces.rows() == 0) {
+                        // Save photo even if no faces found (with empty embedding) so we don't re-download next time
+                        DrivePhotoFace emptyFace = new DrivePhotoFace(
+                                file.getId(),
+                                file.getName(),
+                                folderId,
+                                file.getWebViewLink(),
+                                ""
+                        );
+                        drivePhotoFaceRepository.save(emptyFace);
+                        newlySynced.incrementAndGet();
+                    } else {
+                        // Save each detected face in this photo
+                        for (int i = 0; i < faces.rows(); i++) {
+                            Mat detectedFace = faces.row(i);
+                            Mat feature = faceRecognitionService.getFeature(image, detectedFace);
+
+                            if (feature.empty()) {
+                                feature.release();
+                                continue;
+                            }
+
+                            String serializedFeature = serializeEmbedding(feature);
+
+                            DrivePhotoFace faceRecord = new DrivePhotoFace(
+                                    file.getId(),
+                                    file.getName(),
+                                    folderId,
+                                    file.getWebViewLink(),
+                                    serializedFeature
+                            );
+
+                            drivePhotoFaceRepository.save(faceRecord);
+                            feature.release();
+                        }
+                        newlySynced.incrementAndGet();
+                    }
+
                     faces.release();
-                }
-                if (image != null && !image.empty()) {
                     image.release();
+
+                } catch (Exception e) {
+                    failed.incrementAndGet();
+                    System.err.println("Could not sync " + file.getName() + ": " + e.getMessage());
+                } finally {
+                    int p = processed.incrementAndGet();
+                    progress.put("processed", p);
+                    progress.put("newlySynced", newlySynced.get());
+                    progress.put("alreadySynced", alreadySynced.get());
+                    progress.put("failed", failed.get());
                 }
-            }
+            }, workerPool);
+
+            futures.add(future);
         }
+
+        // Wait for all parallel photo indexing jobs to complete
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 
         // Clean up database records for files that were deleted from Google Drive
         List<DrivePhotoFace> cachedFolderFaces = drivePhotoFaceRepository.findByFolderId(folderId);
