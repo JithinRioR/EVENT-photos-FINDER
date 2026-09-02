@@ -972,7 +972,8 @@
         try {
             const response = await fetch('/api/photos/folders');
             const folders = await response.json();
-            select.innerHTML = '<option value="">-- Select an Event --</option>';
+            select.innerHTML = '<option value="">-- Select an Event / Folder --</option>';
+            select.innerHTML += '<option value="1ETba7ZKTXc_M69X22UZV65EArYczahoW">🌟 All Events (Search Whole Drive)</option>';
             if (folders.length === 0) {
                 select.innerHTML = '<option value="">-- No events found --</option>';
                 return;
