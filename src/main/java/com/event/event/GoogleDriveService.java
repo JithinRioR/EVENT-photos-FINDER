@@ -14,8 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 @Service
 public class GoogleDriveService {
@@ -97,29 +96,62 @@ public class GoogleDriveService {
                 + " and mimeType = 'application/vnd.google-apps.folder'"
                 + " and trashed = false";
 
-        FileList result = drive.files().list()
-                .setQ(query)
-                .setPageSize(50)
-                .setFields("files(id,name)")
-                .execute();
+        List<File> allFolders = new ArrayList<>();
+        String pageToken = null;
 
-        return result.getFiles();
+        do {
+            FileList result = drive.files().list()
+                    .setQ(query)
+                    .setPageSize(100)
+                    .setFields("nextPageToken, files(id,name)")
+                    .setPageToken(pageToken)
+                    .execute();
+
+            if (result.getFiles() != null) {
+                allFolders.addAll(result.getFiles());
+            }
+            pageToken = result.getNextPageToken();
+        } while (pageToken != null);
+
+        return allFolders;
     }
 
-    // Get image files from a specific folder
+    // Get ALL files from a specific folder and any subfolders (with full pagination)
     public List<File> getDriveFiles(String folderId) throws Exception {
 
         Drive drive = getDriveService();
+        List<File> allFiles = new ArrayList<>();
+        Queue<String> foldersToScan = new LinkedList<>();
+        foldersToScan.add(folderId);
 
-        String query = "'" + folderId + "' in parents and trashed = false";
+        while (!foldersToScan.isEmpty()) {
+            String currentFolderId = foldersToScan.poll();
+            String query = "'" + currentFolderId + "' in parents and trashed = false";
+            String pageToken = null;
 
-        FileList result = drive.files().list()
-                .setQ(query)
-                .setPageSize(100)
-                .setFields("files(id,name,mimeType,webViewLink,thumbnailLink)")
-                .execute();
+            do {
+                FileList result = drive.files().list()
+                        .setQ(query)
+                        .setPageSize(1000)
+                        .setFields("nextPageToken, files(id,name,mimeType,webViewLink,thumbnailLink)")
+                        .setPageToken(pageToken)
+                        .execute();
 
-        return result.getFiles();
+                if (result.getFiles() != null) {
+                    for (File file : result.getFiles()) {
+                        if ("application/vnd.google-apps.folder".equals(file.getMimeType())) {
+                            foldersToScan.add(file.getId());
+                        } else {
+                            allFiles.add(file);
+                        }
+                    }
+                }
+                pageToken = result.getNextPageToken();
+            } while (pageToken != null);
+        }
+
+        System.out.println("Fetched " + allFiles.size() + " files total from folder " + folderId + " and subfolders");
+        return allFiles;
     }
 
     // Download a photo from Google Drive

@@ -57,13 +57,20 @@ public class PhotoMatchingController {
         String inputUser = username != null ? username.trim() : "";
         String inputPass = password != null ? password.trim() : "";
 
-        if (configuredUser.equalsIgnoreCase(inputUser) && configuredPass.equals(inputPass)) {
+        boolean matchesUser = configuredUser.equalsIgnoreCase(inputUser)
+                || "VLSI".equalsIgnoreCase(inputUser)
+                || "Admin".equalsIgnoreCase(inputUser);
+        boolean matchesPass = configuredPass.equals(inputPass)
+                || "VLSI".equalsIgnoreCase(inputPass)
+                || "admin123".equals(inputPass);
+
+        if (matchesUser && matchesPass) {
             response.put("status", "success");
             return ResponseEntity.ok(response);
         } else {
             response.put("status", "error");
-            response.put("message", "Incorrect username or password. (Default credentials: Admin / admin123)");
-            return ResponseEntity.ok(response); // Return 200 with error status so browser receives clean JSON
+            response.put("message", "Incorrect username or password. (Allowed credentials: Admin / admin123 or VLSI / VLSI)");
+            return ResponseEntity.ok(response);
         }
     }
 

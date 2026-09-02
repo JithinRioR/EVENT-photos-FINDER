@@ -95,74 +95,12 @@
             border: 1px solid rgba(167, 139, 250, 0.3);
         }
 
-        /* ========== LAYOUT ========== */
-        .app-layout {
-            display: flex;
-            min-height: calc(100vh - 60px);
-        }
-
-        /* ========== SIDEBAR ========== */
-        .sidebar {
-            width: 270px;
-            background: rgba(255, 255, 255, 0.04);
-            border-right: 1px solid rgba(255, 255, 255, 0.08);
-            padding: 20px;
-            overflow-y: auto;
-            flex-shrink: 0;
-        }
-
-        .sidebar h3 {
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #a78bfa;
-            margin-bottom: 12px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid rgba(255,255,255,0.08);
-        }
-
-        .sidebar .file-count {
-            font-size: 12px;
-            color: rgba(255,255,255,0.4);
-            margin-bottom: 12px;
-        }
-
-        .file-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 9px 12px;
-            margin-bottom: 4px;
-            border-radius: 8px;
-            background: rgba(255,255,255,0.02);
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 12px;
-            word-break: break-all;
-            text-decoration: none;
-            color: rgba(255,255,255,0.7);
-        }
-
-        .file-item:hover {
-            background: rgba(167,139,250,0.12);
-            color: #fff;
-        }
-
-        .file-item .icon { font-size: 18px; flex-shrink: 0; }
-
-        .sidebar-placeholder {
-            text-align: center;
-            padding: 30px 10px;
-            color: rgba(255,255,255,0.3);
-            font-size: 12px;
-            line-height: 1.6;
-        }
-
-        /* ========== MAIN CONTENT ========== */
+        /* ========== MAIN CONTAINER ========== */
         .main-content {
-            flex: 1;
-            padding: 35px 40px;
-            overflow-y: auto;
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 35px 20px 60px;
         }
 
         .page { display: none; }
@@ -805,18 +743,8 @@
     </div>
 </nav>
 
-<div class="app-layout">
-
-    <!-- ========== SIDEBAR ========== -->
-    <div class="sidebar">
-        <h3>📁 Event Files</h3>
-        <div id="sidebarFiles">
-            <div class="sidebar-placeholder">Choose an event to see files here.</div>
-        </div>
-    </div>
-
-    <!-- ========== MAIN CONTENT ========== -->
-    <div class="main-content">
+<!-- ========== MAIN CONTENT ========== -->
+<div class="main-content">
 
         <!-- ==================== FINDER PAGE ==================== -->
         <div class="page active" id="finderPage">
@@ -1064,12 +992,6 @@
         selectedFolderId = document.getElementById('folderSelect').value;
         document.getElementById('finderStatus').innerHTML = '';
         document.getElementById('results').innerHTML = '';
-        if (selectedFolderId) {
-            loadSidebarFiles(selectedFolderId);
-        } else {
-            document.getElementById('sidebarFiles').innerHTML =
-                '<div class="sidebar-placeholder">Choose an event to see files here.</div>';
-        }
     }
 
     // ==================== TAB SWITCHING ====================
@@ -1342,45 +1264,6 @@
                 dlBtn.disabled = false;
                 dlBtn.innerHTML = origHtml;
             }
-        }
-    }
-
-    // ==================== SIDEBAR FILES ====================
-    async function loadSidebarFiles(folderId) {
-        const container = document.getElementById('sidebarFiles');
-        container.innerHTML = '<div class="sidebar-placeholder"><span class="spinner"></span> Loading...</div>';
-        try {
-            const response = await fetch('/api/photos/list?folderId=' + encodeURIComponent(folderId));
-            const allFiles = await response.json();
-            const rawExts = ['.cr2','.cr3','.nef','.arw','.dng','.raw'];
-            const files = allFiles.filter(f => {
-                const name = (f.name || '').toLowerCase();
-                return !rawExts.some(ext => name.endsWith(ext));
-            });
-            if (files.length === 0) {
-                container.innerHTML = '<div class="sidebar-placeholder">No displayable files in this event.</div>';
-                return;
-            }
-            let html = `
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                    <span class="file-count" style="margin-bottom:0;">${files.length} photo(s)</span>
-                    <button class="btn btn-secondary btn-sm" onclick="viewAllPhotos()" style="padding:4px 10px; font-size:11px; cursor:pointer;">🖼️ View Gallery</button>
-                </div>`;
-            files.forEach(f => {
-                const isImage = f.mimeType && f.mimeType.startsWith('image/');
-                const icon = isImage ? '🖼️' : '📄';
-                const safeName = f.name.replace(/'/g, "\\'");
-                if (isImage) {
-                    html += `<a href="javascript:void(0)" onclick="openLightbox('/api/photos/view/${f.id}', '${safeName}')" class="file-item">
-                        <span class="icon">${icon}</span><span>${f.name}</span></a>`;
-                } else {
-                    html += `<a href="${f.webViewLink || '#'}" target="_blank" class="file-item">
-                        <span class="icon">${icon}</span><span>${f.name}</span></a>`;
-                }
-            });
-            container.innerHTML = html;
-        } catch (err) {
-            container.innerHTML = '<div class="sidebar-placeholder">Error loading files.</div>';
         }
     }
 
