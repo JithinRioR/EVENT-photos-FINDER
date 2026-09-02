@@ -14,6 +14,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Service
 public class PhotoMatchingService {
@@ -22,6 +25,9 @@ public class PhotoMatchingService {
     private final FaceRecognitionService faceRecognitionService;
     private final GoogleDriveService googleDriveService;
     private final DrivePhotoFaceRepository drivePhotoFaceRepository;
+
+    private final Map<String, Map<String, Object>> syncProgressMap = new ConcurrentHashMap<>();
+    private final ExecutorService syncExecutor = Executors.newSingleThreadExecutor();
 
     public PhotoMatchingService(
             FaceDetector faceDetector,
@@ -147,34 +153,70 @@ public class PhotoMatchingService {
     }
 
     // ==========================================
-    // SYNC FILES & CACHE FACE FEATURES
+    // ASYNC BACKGROUND SYNC & CACHE FACE FEATURES
     // ==========================================
-    public Map<String, Object> syncPhotos(String folderId) throws Exception {
-        Map<String, Object> result = new HashMap<>();
+    public Map<String, Object> getSyncStatus(String folderId) {
+        return syncProgressMap.getOrDefault(folderId, Collections.singletonMap("status", "idle"));
+    }
 
-        // Clear any old corrupt cached records for this event folder first
-        drivePhotoFaceRepository.deleteByFolderId(folderId);
+    public synchronized Map<String, Object> startSync(String folderId) {
+        Map<String, Object> current = syncProgressMap.get(folderId);
+        if (current != null && "running".equals(current.get("status"))) {
+            return current;
+        }
 
+        Map<String, Object> progress = new ConcurrentHashMap<>();
+        progress.put("status", "running");
+        progress.put("processed", 0);
+        progress.put("total", 0);
+        progress.put("newlySynced", 0);
+        progress.put("alreadySynced", 0);
+        progress.put("failed", 0);
+        progress.put("message", "Connecting to Google Drive...");
+        syncProgressMap.put(folderId, progress);
+
+        syncExecutor.submit(() -> {
+            try {
+                processSyncInternal(folderId, progress);
+            } catch (Exception e) {
+                progress.put("status", "error");
+                progress.put("message", e.getMessage() != null ? e.getMessage() : "Sync failed");
+                System.err.println("Async sync error for folder " + folderId + ": " + e.getMessage());
+            }
+        });
+
+        return progress;
+    }
+
+    private void processSyncInternal(String folderId, Map<String, Object> progress) throws Exception {
         // Fetch all current files in the Google Drive parent folder
         List<File> driveFiles = googleDriveService.getDriveFiles(folderId);
-        int totalImages = 0;
+        List<File> imageFiles = new ArrayList<>();
+        Set<String> currentFileIds = new HashSet<>();
+
+        for (File f : driveFiles) {
+            if (f.getMimeType() != null && f.getMimeType().startsWith("image/")) {
+                imageFiles.add(f);
+                currentFileIds.add(f.getId());
+            }
+        }
+
+        int totalImages = imageFiles.size();
+        progress.put("total", totalImages);
+
         int newlySynced = 0;
         int alreadySynced = 0;
         int failed = 0;
+        int processed = 0;
 
-        Set<String> currentFileIds = new HashSet<>();
-
-        for (File file : driveFiles) {
-            // Only process image files
-            if (file.getMimeType() == null || !file.getMimeType().startsWith("image/")) {
-                continue;
-            }
-            totalImages++;
-            currentFileIds.add(file.getId());
+        for (File file : imageFiles) {
+            processed++;
+            progress.put("processed", processed);
 
             // If already indexed in DB, skip download
             if (drivePhotoFaceRepository.existsByFileId(file.getId())) {
                 alreadySynced++;
+                progress.put("alreadySynced", alreadySynced);
                 continue;
             }
 
@@ -192,6 +234,7 @@ public class PhotoMatchingService {
 
                 if (image.empty()) {
                     failed++;
+                    progress.put("failed", failed);
                     continue;
                 }
 
@@ -212,6 +255,7 @@ public class PhotoMatchingService {
                     );
                     drivePhotoFaceRepository.save(emptyFace);
                     newlySynced++;
+                    progress.put("newlySynced", newlySynced);
                     continue;
                 }
 
@@ -240,9 +284,11 @@ public class PhotoMatchingService {
                 }
 
                 newlySynced++;
+                progress.put("newlySynced", newlySynced);
 
             } catch (Exception e) {
                 failed++;
+                progress.put("failed", failed);
                 System.err.println("Could not sync " + file.getName() + ": " + e.getMessage());
             } finally {
                 if (bytes != null) {
@@ -267,12 +313,8 @@ public class PhotoMatchingService {
             }
         }
 
-        result.put("totalImages", totalImages);
-        result.put("newlySynced", newlySynced);
-        result.put("alreadySynced", alreadySynced);
-        result.put("failed", failed);
-        result.put("deletedFromCache", deletedFromCache);
-
-        return result;
+        progress.put("deletedFromCache", deletedFromCache);
+        progress.put("status", "completed");
+        progress.put("message", "Sync completed successfully.");
     }
 }

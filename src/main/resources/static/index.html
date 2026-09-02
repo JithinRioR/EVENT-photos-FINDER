@@ -1532,7 +1532,9 @@
         }
     }
 
-    // ==================== ADMIN: SYNC PHOTOS ====================
+    // ==================== ADMIN: SYNC PHOTOS (ASYNC WITH LIVE PROGRESS) ====================
+    let syncIntervalId = null;
+
     async function syncPhotos() {
         const status = document.getElementById('syncStatus');
         const btn = document.getElementById('syncBtn');
@@ -1543,9 +1545,8 @@
         }
 
         btn.disabled = true;
-        btn.innerHTML = '<span class="spinner"></span> Syncing...';
-        status.style.display = 'block';
-        showStatus(status, 'info', '🔄 Downloading new photos, detecting faces, and caching. Please wait...');
+        btn.innerHTML = '<span class="spinner"></span> Starting sync...';
+        showStatus(status, 'info', '🔄 Starting background sync with Google Drive...');
 
         try {
             const fd = new FormData();
@@ -1555,21 +1556,46 @@
                 method: 'POST',
                 body: fd
             });
-            const result = await response.json();
+            if (!response.ok) throw new Error(await response.text());
 
-            if (result.status === 'success') {
-                showStatus(status, 'success', 
-                    `✅ Sync complete! Total images: ${result.totalImages}, newly indexed: ${result.newlySynced}, already synced: ${result.alreadySynced}, failed: ${result.failed}.`
-                );
-                loadAdminPhotos(adminSelectedFolderId);
-            } else {
-                throw new Error(result.message);
-            }
+            if (syncIntervalId) clearInterval(syncIntervalId);
+
+            // Poll progress every 1.5 seconds
+            syncIntervalId = setInterval(async () => {
+                try {
+                    const statusRes = await fetch('/api/photos/admin/sync-status?folderId=' + encodeURIComponent(adminSelectedFolderId));
+                    if (!statusRes.ok) return;
+                    const data = await statusRes.json();
+
+                    if (data.status === 'running') {
+                        const total = data.total || 0;
+                        const processed = data.processed || 0;
+                        const pct = total > 0 ? Math.round((processed / total) * 100) : 0;
+                        btn.innerHTML = `<span class="spinner"></span> Syncing: ${processed}/${total} (${pct}%)`;
+                        showStatus(status, 'info', `🔄 <strong>Syncing photos in background:</strong> ${processed} of ${total} (${pct}%)<br><small style="opacity:0.85;">Newly Indexed: ${data.newlySynced || 0} | Already Cached: ${data.alreadySynced || 0} | Failed: ${data.failed || 0}</small>`);
+                    } else if (data.status === 'completed') {
+                        clearInterval(syncIntervalId);
+                        syncIntervalId = null;
+                        btn.disabled = false;
+                        btn.innerHTML = '🔄 Sync Photos from Drive';
+                        showStatus(status, 'success', `✅ <strong>Sync Complete!</strong><br>Total photos: ${data.total || 0} | Newly indexed: ${data.newlySynced || 0} | Already cached: ${data.alreadySynced || 0}`);
+                        loadAdminPhotos(adminSelectedFolderId);
+                    } else if (data.status === 'error') {
+                        clearInterval(syncIntervalId);
+                        syncIntervalId = null;
+                        btn.disabled = false;
+                        btn.innerHTML = '🔄 Sync Photos from Drive';
+                        showStatus(status, 'error', '❌ Sync failed: ' + data.message);
+                    }
+                } catch (pollErr) {
+                    console.error('Progress poll error:', pollErr);
+                }
+            }, 1500);
+
         } catch (err) {
-            showStatus(status, 'error', '❌ Sync failed: ' + err.message);
-        } finally {
             btn.disabled = false;
             btn.innerHTML = '🔄 Sync Photos from Drive';
+            showStatus(status, 'error', '❌ Sync trigger error: ' + err.message);
         }
     }
 
