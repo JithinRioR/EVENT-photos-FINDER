@@ -81,14 +81,19 @@ public class PhotoMatchingService {
     }
 
     private byte[] downloadPhotoBytes(File file) throws Exception {
-        String name = file.getName() != null ? file.getName().toLowerCase() : "";
-        if ((name.endsWith(".cr2") || name.endsWith(".cr3") || name.endsWith(".nef") || name.endsWith(".arw") || name.endsWith(".dng") || name.endsWith(".raw"))
-                && file.getThumbnailLink() != null && !file.getThumbnailLink().isBlank()) {
-            String highResThumb = file.getThumbnailLink().replaceAll("=s\\d+", "=s1200");
-            try (java.io.InputStream in = new java.net.URL(highResThumb).openStream()) {
-                return in.readAllBytes();
+        String thumbUrl = (file.getThumbnailLink() != null && !file.getThumbnailLink().isBlank())
+                ? file.getThumbnailLink().replaceAll("=s\\d+", "=s1200")
+                : "https://lh3.googleusercontent.com/d/" + file.getId() + "=s1200";
+
+        try (java.io.InputStream in = new java.net.URL(thumbUrl).openStream()) {
+            byte[] bytes = in.readAllBytes();
+            if (bytes != null && bytes.length > 1000) {
+                return bytes;
             }
+        } catch (Exception ignored) {
+            // Fallback to direct Drive download if CDN preview is unavailable
         }
+
         return googleDriveService.downloadFile(file.getId());
     }
 
@@ -99,7 +104,7 @@ public class PhotoMatchingService {
             return true;
         }
         if (name.endsWith(".cr2") || name.endsWith(".cr3") || name.endsWith(".nef") || name.endsWith(".arw") || name.endsWith(".dng") || name.endsWith(".raw")) {
-            return f.getThumbnailLink() != null && !f.getThumbnailLink().isBlank();
+            return true;
         }
         return f.getMimeType() != null && f.getMimeType().startsWith("image/");
     }
