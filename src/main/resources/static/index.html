@@ -882,7 +882,13 @@
 
                 <!-- Photos in Event -->
                 <div class="card wide" id="photosSection" style="display: none;">
-                    <div class="card-title" style="margin-bottom: 15px;">🖼️ Photos in: <span id="photosEventName" style="color:#ec4899;"></span></div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+                        <div class="card-title" style="margin-bottom: 0;">🖼️ Photos in: <span id="photosEventName" style="color:#ec4899;"></span></div>
+                        <button class="btn btn-primary" id="syncBtn" onclick="syncCurrentEvent()" style="padding: 8px 16px; font-size: 13px;">
+                            ⚡ Sync & Index Faces Now
+                        </button>
+                    </div>
+                    <div class="status-msg" id="syncStatus" style="margin-bottom: 15px;"></div>
                     <div id="photosList">
                         <div class="empty-state">Select an event to view photos.</div>
                     </div>
@@ -1474,7 +1480,43 @@
         }
     }
 
-    // syncPhotos function removed — face indexing now happens automatically on-the-fly
+    // ==================== ADMIN: SYNC & INDEX FACES ====================
+    async function syncCurrentEvent() {
+        if (!adminSelectedFolderId) return;
+        const btn = document.getElementById('syncBtn');
+        const status = document.getElementById('syncStatus');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Indexing...';
+        showStatus(status, 'info', '<span class="spinner"></span> Fast-indexing faces using Google CDN previews in background...');
+
+        try {
+            const fd = new FormData();
+            fd.append('folderId', adminSelectedFolderId);
+            await fetch('/api/photos/admin/sync', { method: 'POST', body: fd });
+
+            // Poll sync progress
+            const interval = setInterval(async () => {
+                try {
+                    const stRes = await fetch('/api/photos/admin/sync-status?folderId=' + encodeURIComponent(adminSelectedFolderId));
+                    const stData = await stRes.json();
+                    if (stData.status === 'completed') {
+                        clearInterval(interval);
+                        btn.disabled = false;
+                        btn.innerHTML = '⚡ Sync & Index Faces Now';
+                        showStatus(status, 'success', `✅ Indexing complete! Total photos: ${stData.total} | Faces indexed.`);
+                        loadAdminPhotos(adminSelectedFolderId);
+                    } else if (stData.status === 'in_progress') {
+                        showStatus(status, 'info', `<span class="spinner"></span> Indexing photos: ${stData.processed || 0} / ${stData.total || '?'}`);
+                    }
+                } catch(e) {}
+            }, 1500);
+
+        } catch (err) {
+            btn.disabled = false;
+            btn.innerHTML = '⚡ Sync & Index Faces Now';
+            showStatus(status, 'error', '❌ Sync failed: ' + err.message);
+        }
+    }
 
     // ==================== IN-APP LIGHTBOX VIEWER ====================
     function openLightbox(imageUrl, imageName) {
